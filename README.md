@@ -1,1 +1,1 @@
-# storefront-api
+# StoreFront API
