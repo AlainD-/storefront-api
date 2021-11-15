@@ -11,7 +11,7 @@
     "jasmine": "jasmine",
     "prettier": "prettier --config .prettierrc \"src/**/*.ts\" --write",
     "pretest": "npm run migrate:test:up",
-    "test": "npm run build && npm run jasmine",
+    "test": "SET NODE_ENV=test && npm run build && npm run jasmine",
     "posttest": "npm run migrate:test:down",
     "migrate:dev:up": "db-migrate up -e dev",
     "migrate:dev:down": "db-migrate down -e dev",
@@ -30,7 +30,10 @@
     "api",
     "udacity"
   ],
-  "author": "Alain D'EURVEILHER <alain.deurveilher@gmail.com>",
+  "author": {
+    "name": "Alain D'EURVEILHER",
+    "email": "alain.deurveilher@gmail.com"
+  },
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/AlainD-/storefront-api/issues"
@@ -45,6 +48,7 @@
     "helmet": "4.6.0",
     "jasmine": "3.10.0",
     "jasmine-spec-reporter": "7.0.0",
+    "joi": "17.4.2",
     "jsonwebtoken": "8.5.1",
     "morgan": "1.10.0",
     "pg": "8.7.1",
@@ -56,6 +60,7 @@
     "@types/express": "4.17.13",
     "@types/helmet": "4.0.0",
     "@types/jasmine": "3.10.2",
+    "@types/joi": "17.2.3",
     "@types/jsonwebtoken": "8.5.5",
     "@types/morgan": "1.9.3",
     "@types/node": "16.11.7",
