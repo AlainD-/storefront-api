@@ -12,11 +12,13 @@
     "prettier": "prettier --config .prettierrc \"src/**/*.ts\" --write",
     "pretest": "npm run migrate:test:up",
     "test": "SET NODE_ENV=test && npm run build && npm run jasmine",
-    "posttest": "npm run migrate:test:down",
+    "posttest": "npm run migrate:test:reset",
     "migrate:dev:up": "db-migrate up -e dev",
     "migrate:dev:down": "db-migrate down -e dev",
+    "migrate:dev:reset": "db-migrate reset -e dev",
     "migrate:test:up": "db-migrate up -e test",
-    "migrate:test:down": "db-migrate down -e test"
+    "migrate:test:down": "db-migrate down -e test",
+    "migrate:test:reset": "db-migrate reset -e test"
   },
   "repository": {
     "type": "git",
@@ -40,6 +42,7 @@
   },
   "homepage": "https://github.com/AlainD-/storefront-api#readme",
   "dependencies": {
+    "bcrypt": "5.0.1",
     "cors": "2.8.5",
     "db-migrate-pg": "1.2.2",
     "dotenv": "10.0.0",
@@ -56,6 +59,7 @@
     "winston": "3.3.3"
   },
   "devDependencies": {
+    "@types/bcrypt": "5.0.0",
     "@types/cors": "2.8.12",
     "@types/express": "4.17.13",
     "@types/helmet": "4.0.0",

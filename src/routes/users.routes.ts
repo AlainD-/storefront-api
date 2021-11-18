@@ -1,6 +1,7 @@
 import express, { Router, Request, Response } from 'express';
 import { User } from '../models/user';
-import { UserStore, validateUser } from '../models/user.store';
+import { UserInput } from '../models/user-input';
+import { UserStore, validateUser, validateUserInput } from '../models/user.store';
 import { isANumber, queryToNumber } from '../services/common-validation.service';
 
 const router: Router = express.Router();
@@ -34,20 +35,34 @@ router.get('/:id', async (req: Request, res: Response) => {
   return res.send(user);
 });
 
+/**
+ * This route is used for new registration
+ */
 router.post('/', async (req: Request, res: Response) => {
-  const { error } = validateUser(req.body);
+  const { error } = validateUserInput(req.body);
   if (error) {
     return res.status(400).send(error.details[0]?.message);
   }
 
-  const { firstName, lastName } = req.body;
-  const user: User | undefined = await UserStore.create({ firstName, lastName });
+  try {
+    const { email, firstName, lastName, password } = req.body as UserInput;
+    const userFound: User | undefined = await UserStore.showByEmail(email);
+    if (userFound) {
+      return res.status(400).send('A user already exists with this email');
+    }
 
-  if (!user) {
-    return res.status(500).send('An unexpected error occurred during the creation of the user');
+    const user: User | undefined = await UserStore.create({ email, firstName, lastName, password });
+
+    if (!user) {
+      return res.status(500).send('An unexpected error occurred during the creation of the user');
+    }
+
+    return res.send(user);
+  } catch (err: any) {
+    return res
+      .status(500)
+      .send(`An unexpected error occurred during the creation of the user. ${err?.message ?? ''}`);
   }
-
-  return res.send(user);
 });
 
 router.put('/:id', async (req: Request, res: Response) => {
@@ -62,14 +77,14 @@ router.put('/:id', async (req: Request, res: Response) => {
   }
 
   const id: number = queryToNumber(qId);
-  const { firstName, lastName } = req.body;
+  const { firstName, lastName, email } = req.body;
   const user: User | undefined = await UserStore.show(id);
 
   if (!user) {
     return res.status(404).send(USER_NOT_FOUND);
   }
 
-  const updatedUser: User | undefined = await UserStore.update(id, { firstName, lastName });
+  const updatedUser: User | undefined = await UserStore.update(id, { firstName, lastName, email });
 
   return res.send(updatedUser);
 });

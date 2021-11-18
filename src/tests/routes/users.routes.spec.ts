@@ -13,8 +13,8 @@ const deleteAllUsers = async (): Promise<void> => {
 
 const insertUser = async (): Promise<User> => {
   const query =
-    'INSERT INTO users (first_name, last_name, password) VALUES ($1, $2, $3) RETURNING id, first_name AS "firstName", last_name AS "lastName";';
-  const users: User[] = await DatabaseService.runQuery<User>(query, ['a', 'b', 'c']);
+    'INSERT INTO users (first_name, last_name, password, email) VALUES ($1, $2, $3, $4) RETURNING id, email, first_name AS "firstName", last_name AS "lastName", is_admin AS "isAdmin";';
+  const users: User[] = await DatabaseService.runQuery<User>(query, ['a', 'b', 'c', 'd@d.d']);
   return users[0];
 };
 
@@ -25,7 +25,7 @@ const maxUserId = async (): Promise<number> => {
 };
 
 describe('GET /api/v1/users', () => {
-  beforeAll(async () => {
+  beforeEach(async () => {
     await deleteAllUsers();
   });
 
@@ -44,7 +44,13 @@ describe('GET /api/v1/users', () => {
     expect(status).toBe(200);
     expect(type).toContain('json');
     expect(body.length > 0).toBeTruthy();
-    expect(body).toContain({ id: jasmine.any(Number), firstName: 'a', lastName: 'b' });
+    expect(body).toContain({
+      id: jasmine.any(Number),
+      firstName: 'a',
+      lastName: 'b',
+      email: 'd@d.d',
+      isAdmin: 0,
+    });
   });
 
   it('should not include the password in the Users detail', async () => {
@@ -61,11 +67,8 @@ describe('GET /api/v1/users', () => {
 describe('GET /api/v1/users/:id', () => {
   let maxId: number;
 
-  beforeAll(async () => {
-    await deleteAllUsers();
-  });
-
   beforeEach(async () => {
+    await deleteAllUsers();
     maxId = await maxUserId();
   });
 
@@ -93,7 +96,7 @@ describe('GET /api/v1/users/:id', () => {
     const { status, type, body } = response;
     expect(status).toBe(200);
     expect(type).toContain('json');
-    expect(body).toEqual({ id: userId, firstName: 'a', lastName: 'b' });
+    expect(body).toEqual({ id: userId, firstName: 'a', lastName: 'b', email: 'd@d.d', isAdmin: 0 });
   });
 
   it('should not include the password in the User detail', async () => {
@@ -108,292 +111,536 @@ describe('GET /api/v1/users/:id', () => {
 });
 
 describe('POST /api/v1/users', () => {
-  let user: { firstName: unknown; lastName: unknown };
+  let user: { firstName: unknown; lastName: unknown; email: unknown };
 
-  beforeAll(async () => {
-    await deleteAllUsers();
+  describe('data validation', () => {
+    describe('"firstName" property', () => {
+      beforeAll(async () => {
+        await deleteAllUsers();
+      });
+
+      beforeEach(() => {
+        user = { firstName: 'a', lastName: 'b', email: 'c@c.c' };
+      });
+
+      it('should respond 400 error if the firstName is missing', async () => {
+        user.firstName = undefined;
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+required/);
+      });
+
+      it('should respond 400 error if the firstName is an empty string', async () => {
+        user.firstName = '';
+        let response: Response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/firstName.+not allowed to be empty/);
+
+        user.firstName = null;
+        response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/firstName.+must be a string/);
+      });
+
+      it('should respond 400 error if the firstName is not a string: boolean true', async () => {
+        user.firstName = true;
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+must be a string/);
+      });
+
+      it('should respond 400 error if the firstName is not a string: number 1', async () => {
+        user.firstName = 1;
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+must be a string/);
+      });
+
+      it('should respond 400 error if the firstName is not a string: object {}', async () => {
+        user.firstName = {};
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+must be a string/);
+      });
+
+      it('should respond 400 error if the firstName is not a string: array []', async () => {
+        user.firstName = [];
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+must be a string/);
+      });
+    });
+
+    describe('"lastName" property', () => {
+      beforeAll(async () => {
+        await deleteAllUsers();
+      });
+
+      beforeEach(() => {
+        user = { firstName: 'a', lastName: 'b', email: 'c@c.c' };
+      });
+
+      it('should respond 400 error if the lastName is missing', async () => {
+        user.lastName = undefined;
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+required/);
+      });
+
+      it('should respond 400 error if the lastName is an empty string', async () => {
+        user.lastName = '';
+        let response: Response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/lastName.+not allowed to be empty/);
+
+        user.lastName = null;
+        response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/lastName.+must be a string/);
+      });
+
+      it('should respond 400 error if the lastName is not a string: boolean true', async () => {
+        user.lastName = true;
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+must be a string/);
+      });
+
+      it('should respond 400 error if the lastName is not a string: number 1', async () => {
+        user.lastName = 1;
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+must be a string/);
+      });
+
+      it('should respond 400 error if the lastName is not a string: object {}', async () => {
+        user.lastName = {};
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+must be a string/);
+      });
+
+      it('should respond 400 error if the lastName is not a string: array []', async () => {
+        user.lastName = [];
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+must be a string/);
+      });
+    });
+
+    describe('"email" property', () => {
+      beforeAll(async () => {
+        await deleteAllUsers();
+      });
+
+      beforeEach(() => {
+        user = { firstName: 'a', lastName: 'b', email: 'c@c.c' };
+      });
+
+      it('should respond 400 error if the email is missing', async () => {
+        user.email = undefined;
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+required/);
+      });
+
+      it('should respond 400 error if the email is an empty string', async () => {
+        user.email = '';
+        let response: Response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+not allowed to be empty/);
+
+        user.email = null;
+        response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+must be a string/);
+      });
+
+      it('should respond 400 error if the email is not a string: boolean true', async () => {
+        user.email = true;
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+must be a string/);
+      });
+
+      it('should respond 400 error if the email is not a string: number 1', async () => {
+        user.email = 1;
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+must be a string/);
+      });
+
+      it('should respond 400 error if the email is not a string: object {}', async () => {
+        user.email = {};
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+must be a string/);
+      });
+
+      it('should respond 400 error if the email is not a string: array []', async () => {
+        user.email = [];
+        const response: Response = await request.post(usersEndPoint).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+must be a string/);
+      });
+
+      it('should respond 400 error if the email is less than 3 characters', async () => {
+        user.email = 'a';
+        let response: Response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+at least 3 characters long/);
+
+        user.email = 'aa';
+        response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+at least 3 characters long/);
+      });
+
+      it('should respond 400 error if the email is not valid', async () => {
+        user.email = 'aaa';
+        let response: Response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+must be a valid email/);
+
+        user.email = 'aa@';
+        response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+must be a valid email/);
+
+        user.email = '@aa';
+        response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+must be a valid email/);
+
+        user.email = 'a@a';
+        response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+must be a valid email/);
+
+        user.email = '@a.a';
+        response = await request.post(usersEndPoint).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+must be a valid email/);
+      });
+    });
   });
 
-  beforeEach(() => {
-    user = { firstName: 'a', lastName: 'b' };
-  });
+  describe('Happy path', () => {
+    beforeAll(async () => {
+      await deleteAllUsers();
+    });
 
-  it('should respond 400 error if the firstName is missing', async () => {
-    user.firstName = undefined;
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+required/);
-  });
+    beforeEach(() => {
+      user = { firstName: 'a', lastName: 'b', email: 'c@c.c' };
+    });
 
-  it('should respond 400 error if the firstName is an empty string', async () => {
-    user.firstName = '';
-    let response: Response = await request.post(usersEndPoint).send(user);
-    expect(response.status).toBe(400);
-    expect(response.type).toContain('text');
-    expect(response.text).toMatch(/firstName.+not allowed to be empty/);
-
-    user.firstName = null;
-    response = await request.post(usersEndPoint).send(user);
-    expect(response.status).toBe(400);
-    expect(response.type).toContain('text');
-    expect(response.text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the firstName is not a string: boolean true', async () => {
-    user.firstName = true;
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the firstName is not a string: number 1', async () => {
-    user.firstName = 1;
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the firstName is not a string: object {}', async () => {
-    user.firstName = {};
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the firstName is not a string: array []', async () => {
-    user.firstName = [];
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is missing', async () => {
-    user.lastName = undefined;
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+required/);
-  });
-
-  it('should respond 400 error if the lastName is an empty string', async () => {
-    user.lastName = '';
-    let response: Response = await request.post(usersEndPoint).send(user);
-    expect(response.status).toBe(400);
-    expect(response.type).toContain('text');
-    expect(response.text).toMatch(/lastName.+not allowed to be empty/);
-
-    user.lastName = null;
-    response = await request.post(usersEndPoint).send(user);
-    expect(response.status).toBe(400);
-    expect(response.type).toContain('text');
-    expect(response.text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is not a string: boolean true', async () => {
-    user.lastName = true;
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is not a string: number 1', async () => {
-    user.lastName = 1;
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is not a string: object {}', async () => {
-    user.lastName = {};
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is not a string: array []', async () => {
-    user.lastName = [];
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should add a User for valid input data', async () => {
-    const response: Response = await request.post(usersEndPoint).send(user);
-    const { status, type, body } = response;
-    expect(status).toBe(200);
-    expect(type).toContain('json');
-    expect(body).toEqual({ id: jasmine.any(Number), firstName: 'a', lastName: 'b' });
+    it('should add a User for valid input data', async () => {
+      const response: Response = await request.post(usersEndPoint).send(user);
+      const { status, type, body } = response;
+      expect(status).toBe(200);
+      expect(type).toContain('json');
+      expect(body).toEqual({
+        id: jasmine.any(Number),
+        firstName: 'a',
+        lastName: 'b',
+        email: 'c@c.c',
+        isAdmin: 0,
+      });
+    });
   });
 });
 
 describe('PUT /api/v1/users/:id', () => {
   let maxId: number;
-  let user: { firstName: unknown; lastName: unknown };
+  let user: { firstName: unknown; lastName: unknown; email: unknown };
   let id: number;
 
-  beforeAll(async () => {
-    await deleteAllUsers();
-    const lastUser: User = await insertUser();
-    id = lastUser.id;
-    maxId = await maxUserId();
+  describe('Validation', () => {
+    describe('"firstName" property', () => {
+      beforeAll(async () => {
+        await deleteAllUsers();
+        const lastUser: User = await insertUser();
+        id = lastUser.id;
+        maxId = await maxUserId();
+      });
+
+      beforeEach(async () => {
+        user = { firstName: 'x', lastName: 'y', email: 'z@z.z' };
+      });
+
+      it('should respond a 404 error when the id does not exist', async () => {
+        const inexistentId = maxId + 1;
+        const response: Response = await request.put(`${usersEndPoint}/${inexistentId}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(404);
+        expect(type).toContain('text');
+        expect(text).toMatch(/not found/i);
+      });
+
+      it('should respond 400 error if the firstName is missing', async () => {
+        user.firstName = undefined;
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+required/);
+      });
+
+      it('should respond 400 error if the firstName is an empty string', async () => {
+        user.firstName = '';
+        let response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/firstName.+not allowed to be empty/);
+
+        user.firstName = null;
+        response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/firstName.+must be a string/);
+      });
+
+      it('should respond 400 error if the firstName is not a string: boolean true', async () => {
+        user.firstName = true;
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+must be a string/);
+      });
+
+      it('should respond 400 error if the firstName is not a string: number 1', async () => {
+        user.firstName = 1;
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+must be a string/);
+      });
+
+      it('should respond 400 error if the firstName is not a string: object {}', async () => {
+        user.firstName = {};
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+must be a string/);
+      });
+
+      it('should respond 400 error if the firstName is not a string: array []', async () => {
+        user.firstName = [];
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/firstName.+must be a string/);
+      });
+    });
+
+    describe('"lastName" property', () => {
+      beforeAll(async () => {
+        await deleteAllUsers();
+        const lastUser: User = await insertUser();
+        id = lastUser.id;
+      });
+
+      beforeEach(async () => {
+        user = { firstName: 'x', lastName: 'y', email: 'z@z.z' };
+      });
+
+      it('should respond 400 error if the lastName is missing', async () => {
+        user.lastName = undefined;
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+required/);
+      });
+
+      it('should respond 400 error if the lastName is an empty string', async () => {
+        user.lastName = '';
+        let response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/lastName.+not allowed to be empty/);
+
+        user.lastName = null;
+        response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/lastName.+must be a string/);
+      });
+
+      it('should respond 400 error if the lastName is not a string: boolean true', async () => {
+        user.lastName = true;
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+must be a string/);
+      });
+
+      it('should respond 400 error if the lastName is not a string: number 1', async () => {
+        user.lastName = 1;
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+must be a string/);
+      });
+
+      it('should respond 400 error if the lastName is not a string: object {}', async () => {
+        user.lastName = {};
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+must be a string/);
+      });
+
+      it('should respond 400 error if the lastName is not a string: array []', async () => {
+        user.lastName = [];
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/lastName.+must be a string/);
+      });
+    });
+
+    describe('"email" property', () => {
+      beforeAll(async () => {
+        await deleteAllUsers();
+        const lastUser: User = await insertUser();
+        id = lastUser.id;
+      });
+
+      beforeEach(async () => {
+        user = { firstName: 'x', lastName: 'y', email: 'z@z.z' };
+      });
+
+      it('should respond 400 error if the email is missing', async () => {
+        user.email = undefined;
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+required/);
+      });
+
+      it('should respond 400 error if the email is an empty string', async () => {
+        user.email = '';
+        let response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+not allowed to be empty/);
+
+        user.email = null;
+        response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('text');
+        expect(response.text).toMatch(/email.+must be a string/);
+      });
+
+      it('should respond 400 error if the email is not a string: boolean true', async () => {
+        user.email = true;
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+must be a string/);
+      });
+
+      it('should respond 400 error if the email is not a string: number 1', async () => {
+        user.email = 1;
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+must be a string/);
+      });
+
+      it('should respond 400 error if the email is not a string: object {}', async () => {
+        user.email = {};
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+must be a string/);
+      });
+
+      it('should respond 400 error if the email is not a string: array []', async () => {
+        user.email = [];
+        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const { status, type, text } = response;
+        expect(status).toBe(400);
+        expect(type).toContain('text');
+        expect(text).toMatch(/email.+must be a string/);
+      });
+    });
   });
 
-  beforeEach(async () => {
-    user = { firstName: 'x', lastName: 'y' };
-  });
+  describe('Happy path', () => {
+    beforeAll(async () => {
+      await deleteAllUsers();
+      const lastUser: User = await insertUser();
+      id = lastUser.id;
+    });
 
-  it('should respond a 404 error when the id does not exist', async () => {
-    const inexistentId = maxId + 1;
-    const response: Response = await request.put(`${usersEndPoint}/${inexistentId}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(404);
-    expect(type).toContain('text');
-    expect(text).toMatch(/not found/i);
-  });
+    beforeEach(async () => {
+      user = { firstName: 'x', lastName: 'y', email: 'z@z.z' };
+    });
 
-  it('should respond 400 error if the firstName is missing', async () => {
-    user.firstName = undefined;
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+required/);
-  });
-
-  it('should respond 400 error if the firstName is an empty string', async () => {
-    user.firstName = '';
-    let response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    expect(response.status).toBe(400);
-    expect(response.type).toContain('text');
-    expect(response.text).toMatch(/firstName.+not allowed to be empty/);
-
-    user.firstName = null;
-    response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    expect(response.status).toBe(400);
-    expect(response.type).toContain('text');
-    expect(response.text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the firstName is not a string: boolean true', async () => {
-    user.firstName = true;
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the firstName is not a string: number 1', async () => {
-    user.firstName = 1;
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the firstName is not a string: object {}', async () => {
-    user.firstName = {};
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the firstName is not a string: array []', async () => {
-    user.firstName = [];
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/firstName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is missing', async () => {
-    user.lastName = undefined;
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+required/);
-  });
-
-  it('should respond 400 error if the lastName is an empty string', async () => {
-    user.lastName = '';
-    let response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    expect(response.status).toBe(400);
-    expect(response.type).toContain('text');
-    expect(response.text).toMatch(/lastName.+not allowed to be empty/);
-
-    user.lastName = null;
-    response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    expect(response.status).toBe(400);
-    expect(response.type).toContain('text');
-    expect(response.text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is not a string: boolean true', async () => {
-    user.lastName = true;
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is not a string: number 1', async () => {
-    user.lastName = 1;
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is not a string: object {}', async () => {
-    user.lastName = {};
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should respond 400 error if the lastName is not a string: array []', async () => {
-    user.lastName = [];
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, text } = response;
-    expect(status).toBe(400);
-    expect(type).toContain('text');
-    expect(text).toMatch(/lastName.+must be a string/);
-  });
-
-  it('should update the firstName "x" and lastName "y"', async () => {
-    const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
-    const { status, type, body } = response;
-    expect(status).toBe(200);
-    expect(type).toContain('json');
-    expect(body).toEqual({ id, firstName: 'x', lastName: 'y' });
+    it('should update the firstName "x" and lastName "y"', async () => {
+      const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+      const { status, type, body } = response;
+      expect(status).toBe(200);
+      expect(type).toContain('json');
+      expect(body).toEqual({ id, firstName: 'x', lastName: 'y', email: 'z@z.z', isAdmin: 0 });
+    });
   });
 });
 
@@ -425,7 +672,7 @@ describe('DELETE /api/v1/users/:id', () => {
     const { status, type, body } = response;
     expect(status).toBe(200);
     expect(type).toContain('json');
-    expect(body).toEqual({ id, firstName: 'a', lastName: 'b' });
+    expect(body).toEqual({ id, firstName: 'a', lastName: 'b', email: 'd@d.d', isAdmin: 0 });
 
     const responseAfterDelete: Response = await request.get(`${usersEndPoint}`);
     const numberOfUsersAfter: number = responseAfterDelete.body.length;

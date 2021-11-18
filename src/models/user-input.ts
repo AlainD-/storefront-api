@@ -1,7 +1,6 @@
-export interface User {
-  id: number;
+export interface UserInput {
   email: string;
   firstName: string;
   lastName: string;
-  isAdmin?: boolean;
+  password: string;
 }
