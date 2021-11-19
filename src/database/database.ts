@@ -1,18 +1,15 @@
-import dotenv from 'dotenv';
 import { Pool } from 'pg';
-
-dotenv.config();
-
-const {
-  POSTGRES_HOST,
-  POSTGRES_PORT,
+import {
+  NODE_ENV,
   POSTGRES_DB,
   POSTGRES_DB_TEST,
-  POSTGRES_USER,
+  POSTGRES_HOST,
   POSTGRES_PASSWORD,
   POSTGRES_PASSWORD_TEST,
-  NODE_ENV,
-} = process.env;
+  POSTGRES_PORT,
+  POSTGRES_USER,
+} from '../config/environment';
+
 const ENV: string | undefined = NODE_ENV?.trim();
 
 const pool: Pool = new Pool({

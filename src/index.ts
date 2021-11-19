@@ -1,16 +1,15 @@
 import express, { Express } from 'express';
-import dotenv from 'dotenv';
 import logger from './middleware/logger';
 import startupAppConfig from './startup/app-config';
 import setRoutes from './routes';
+import { PORT } from './config/environment';
 
-dotenv.config();
 const app: Express = express();
 
 startupAppConfig(app);
 setRoutes(app);
 
-const port = process.env.PORT || 3000;
+const port = PORT ? parseInt(PORT, 10) : 3000;
 app.listen(port, () => logger.info(`Listening on port ${port}...`));
 
 export default app;

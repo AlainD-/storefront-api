@@ -1,13 +1,8 @@
-import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
 import Joi, { ValidationResult } from 'joi';
 import { User } from './user';
 import { UserInput } from './user-input';
 import DatabaseService from '../services/database.service';
-
-dotenv.config();
-
-const { BCRYPT_PASSWORD, SALT_ROUNDS } = process.env;
+import { hash$ } from '../services/security.service';
 
 export const validateUserInput = (data: UserInput): ValidationResult => {
   const joiSchema: Joi.ObjectSchema<UserInput> = Joi.object({
@@ -30,14 +25,6 @@ export const validateUser = (data: Partial<User>): ValidationResult => {
 };
 
 export class UserStore {
-  static async hash$(password: string): Promise<string> {
-    const hashed: string = await bcrypt.hash(
-      `${password}${BCRYPT_PASSWORD}`,
-      parseInt(SALT_ROUNDS as string, 10)
-    );
-    return hashed;
-  }
-
   static async index(): Promise<User[]> {
     try {
       const query =
@@ -77,8 +64,8 @@ export class UserStore {
   static async create(userInput: UserInput): Promise<User | undefined> {
     try {
       const { email, firstName, lastName, password } = userInput;
-      const isAdmin = 0; // Forbidden to create admin user directly
-      const hashedPassword: string = await UserStore.hash$(password);
+      const isAdmin = 0; // @note: Forbidden to create an admin user directly
+      const hashedPassword: string = await hash$(password);
       const query =
         'INSERT INTO users (first_name, last_name, password, email, is_admin) VALUES ($1, $2, $3, $4, $5) RETURNING id, email, first_name AS "firstName", last_name AS "lastName", is_admin AS "isAdmin";';
       const users: User[] = await DatabaseService.runQuery<User>(query, [
