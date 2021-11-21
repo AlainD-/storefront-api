@@ -1,0 +1,33 @@
+import jwt, { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
+import { RSA_PUBLIC_KEY } from '../config/environment';
+
+export default function checkAuthenticated(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Response<any, Record<string, any>> | void {
+  try {
+    const authorizationHeader: string | undefined = req.headers.authorization;
+    if (!authorizationHeader) {
+      return res.status(401).send('The Authorization header was missing');
+    }
+    const authHeaderParts: string[] = authorizationHeader.split(' ');
+    if (authHeaderParts.length < 2) {
+      return res.status(401).send('Invalid Authorization header format');
+    }
+    const token = authorizationHeader.split(' ')[1];
+    // verifies both signature and the optional expiration date
+    const decodedToken: string | JwtPayload = jwt.verify(token, RSA_PUBLIC_KEY);
+    return next();
+  } catch (error: unknown) {
+    if (
+      error instanceof TokenExpiredError ||
+      error instanceof JsonWebTokenError ||
+      error instanceof Error
+    ) {
+      return res.status(401).send(error.message);
+    }
+    return res.status(401).send('Authorization failed');
+  }
+}

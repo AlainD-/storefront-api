@@ -15,11 +15,12 @@ export const getJWTToken = (user: User): string => {
   if (user.isAdmin) {
     roles.push('admin');
   }
-  const expiresIn = 86400; // 1d in seconds
+  const expiresIn = '1d';
   return jwt.sign(
     {
       roles,
       permissions,
+      userId: user.id,
     },
     RSA_PRIVATE_KEY,
     {

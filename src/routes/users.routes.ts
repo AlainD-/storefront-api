@@ -1,4 +1,5 @@
 import express, { Router, Request, Response } from 'express';
+import checkAuthenticated from '../middleware/auth';
 import { User } from '../models/user';
 import { UserInput } from '../models/user-input';
 import { UserStore, validateUser, validateUserInput } from '../models/user.store';
@@ -65,7 +66,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-router.put('/:id', async (req: Request, res: Response) => {
+router.put('/:id', checkAuthenticated, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
     return res.status(400).send(INVALID_USER_ID);
@@ -89,7 +90,7 @@ router.put('/:id', async (req: Request, res: Response) => {
   return res.send(updatedUser);
 });
 
-router.delete('/:id', async (req: Request, res: Response) => {
+router.delete('/:id', checkAuthenticated, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
     return res.status(400).send(INVALID_USER_ID);
