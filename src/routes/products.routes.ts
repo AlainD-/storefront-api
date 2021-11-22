@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import checkAuthenticated from '../middleware/auth';
+import { checkAuthenticated, checkIsAdmin } from '../middleware/auth';
 import { Product } from '../models/product';
 import { ProductInput } from '../models/product-input';
 import { ProductStore, validate } from '../models/product.store';
@@ -36,7 +36,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   return res.send(product);
 });
 
-router.post('/', checkAuthenticated, async (req: Request, res: Response) => {
+router.post('/', checkAuthenticated, checkIsAdmin, async (req: Request, res: Response) => {
   const { error } = validate(req.body);
   if (error) {
     return res.status(400).send(error.details[0]?.message);
@@ -63,7 +63,7 @@ router.post('/', checkAuthenticated, async (req: Request, res: Response) => {
   }
 });
 
-router.put('/:id', checkAuthenticated, async (req: Request, res: Response) => {
+router.put('/:id', checkAuthenticated, checkIsAdmin, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
     return res.status(400).send(INVALID_PRODUCT_ID);
@@ -91,7 +91,7 @@ router.put('/:id', checkAuthenticated, async (req: Request, res: Response) => {
   return res.send(updatedProduct);
 });
 
-router.delete('/:id', checkAuthenticated, async (req: Request, res: Response) => {
+router.delete('/:id', checkAuthenticated, checkIsAdmin, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
     return res.status(400).send(INVALID_PRODUCT_ID);

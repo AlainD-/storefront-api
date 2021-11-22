@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import checkAuthenticated from '../middleware/auth';
+import { checkAuthenticated } from '../middleware/auth';
 import { User } from '../models/user';
 import { UserInput } from '../models/user-input';
 import { UserStore, validateUser, validateUserInput } from '../models/user.store';
