@@ -83,7 +83,7 @@ export class OrderStore {
     try {
       const query = `SELECT o.id, o.user_id AS "userId", o.status, p.product_id AS "productId", p.quantity, p.id AS "relationId"
         FROM orders o
-        LEFT JOIN products_to_orders p ON (o.id = p.order_id)
+        LEFT JOIN products_in_orders p ON (o.id = p.order_id)
         ORDER BY o.user_id ASC, o.id ASC`;
 
       const rows: OrderRow[] = await DatabaseService.runQuery<OrderRow>(query);
@@ -97,7 +97,7 @@ export class OrderStore {
     try {
       const query = `SELECT o.id, o.user_id AS "userId", o.status, p.product_id AS "productId", p.quantity, p.id AS "relationId"
         FROM orders o
-        LEFT JOIN products_to_orders p ON (o.id = p.order_id)
+        LEFT JOIN products_in_orders p ON (o.id = p.order_id)
         WHERE o.id = ($1)
         ORDER BY o.user_id ASC, o.id ASC`;
       const rows: OrderRow[] = await DatabaseService.runQuery<OrderRow>(query, [id]);
@@ -150,7 +150,7 @@ export class OrderStore {
     try {
       // @todo validate that the product is not in the order yet!
       // @todo validate that the order is still active!
-      const query = `INSERT INTO products_to_orders (order_id, product_id, quantity)
+      const query = `INSERT INTO products_in_orders (order_id, product_id, quantity)
         VALUES ($1, $2, $3)
         RETURNING id, order_id AS "orderId", product_id AS "productId", quantity;`;
       const rows: PurchasedProduct[] = await DatabaseService.runQuery<PurchasedProduct>(query, [
@@ -181,10 +181,10 @@ export class OrderStore {
         quantity <= 0 ? [orderId, productId] : [quantity, orderId, productId];
       const query =
         quantity <= 0
-          ? `DELETE FROM products_to_orders
+          ? `DELETE FROM products_in_orders
           WHERE order_id = ($1) AND product_id = ($2)
           RETURNING id, order_id AS "orderId", product_id AS "productId", quantity;`
-          : `UPDATE products_to_orders
+          : `UPDATE products_in_orders
           SET quantity = ($1)
           WHERE order_id = ($2) AND product_id = ($3)
           RETURNING id, order_id AS "orderId", product_id AS "productId", quantity;`;
