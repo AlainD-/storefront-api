@@ -5,6 +5,7 @@ import fallback from './fallback.routes';
 import authenticate from './authenticate.routes';
 import users from './users.routes';
 import products from './products.routes';
+import orders from './orders.routes';
 
 export default function routes(app: Express): void {
   app.use(express.json()); // json by default
@@ -14,6 +15,7 @@ export default function routes(app: Express): void {
   app.use('/api/v1/authenticate', authenticate);
   app.use('/api/v1/users', users);
   app.use('/api/v1/products', products);
+  app.use('/api/v1/orders', orders);
 
   app.use('*', fallback); // This route must be placed last
 }
