@@ -53,6 +53,7 @@ router.post('/', checkAuthenticated, async (req: Request, res: Response) => {
     }
 
     return res.send(product);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     return res
       .status(500)

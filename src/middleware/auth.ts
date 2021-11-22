@@ -6,6 +6,7 @@ export default function checkAuthenticated(
   req: Request,
   res: Response,
   next: NextFunction
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Response<any, Record<string, any>> | void {
   try {
     const authorizationHeader: string | undefined = req.headers.authorization;
@@ -18,6 +19,7 @@ export default function checkAuthenticated(
     }
     const token = authorizationHeader.split(' ')[1];
     // verifies both signature and the optional expiration date
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const decodedToken: string | JwtPayload = jwt.verify(token, RSA_PUBLIC_KEY);
     return next();
   } catch (error: unknown) {
