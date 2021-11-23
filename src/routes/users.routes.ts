@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import { checkAuthenticated } from '../middleware/auth';
+import { checkAuthenticated, checkIsAdmin } from '../middleware/auth';
 import { User } from '../models/user';
 import { UserInput } from '../models/user-input';
 import { UserStore, validateUser, validateUserInput } from '../models/user.store';
@@ -9,7 +9,7 @@ const router: Router = express.Router();
 const INVALID_USER_ID = 'The user id is not a valid number';
 const USER_NOT_FOUND = 'The user with the given id was not found';
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', checkAuthenticated, checkIsAdmin, async (_req: Request, res: Response) => {
   let users: User[];
   try {
     users = await UserStore.index();
@@ -20,7 +20,7 @@ router.get('/', async (_req: Request, res: Response) => {
   return res.send(users);
 });
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', checkAuthenticated, checkIsAdmin, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
     return res.status(400).send(INVALID_USER_ID);
@@ -90,7 +90,7 @@ router.put('/:id', checkAuthenticated, async (req: Request, res: Response) => {
   return res.send(updatedUser);
 });
 
-router.delete('/:id', checkAuthenticated, async (req: Request, res: Response) => {
+router.delete('/:id', checkAuthenticated, checkIsAdmin, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
     return res.status(400).send(INVALID_USER_ID);

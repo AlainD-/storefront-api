@@ -1,5 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import { checkAuthenticated } from '../middleware/auth';
+import { checkAuthenticated, checkIsAdmin } from '../middleware/auth';
 import { Order } from '../models/order';
 import {
   OrderStore,
@@ -15,7 +15,7 @@ const INVALID_ORDER_ID = 'The order id is not a valid number';
 const INVALID_PRODUCT_ID = 'The product id is not a valid number';
 const ORDER_NOT_FOUND = 'The order with the given id was not found';
 
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', checkIsAdmin, async (_req: Request, res: Response) => {
   let orders: Order[];
   try {
     orders = await OrderStore.index();
@@ -26,7 +26,7 @@ router.get('/', async (_req: Request, res: Response) => {
   return res.send(orders);
 });
 
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:id', checkIsAdmin, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
     return res.status(400).send(INVALID_ORDER_ID);
