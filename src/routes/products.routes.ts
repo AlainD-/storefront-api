@@ -36,7 +36,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   return res.send(product);
 });
 
-router.post('/', checkAuthenticated, checkIsAdmin, async (req: Request, res: Response) => {
+router.post('/', checkIsAdmin, async (req: Request, res: Response) => {
   const { error } = validate(req.body);
   if (error) {
     return res.status(400).send(error.details[0]?.message);
@@ -63,7 +63,7 @@ router.post('/', checkAuthenticated, checkIsAdmin, async (req: Request, res: Res
   }
 });
 
-router.put('/:id', checkAuthenticated, checkIsAdmin, async (req: Request, res: Response) => {
+router.put('/:id', checkIsAdmin, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
     return res.status(400).send(INVALID_PRODUCT_ID);
@@ -91,7 +91,7 @@ router.put('/:id', checkAuthenticated, checkIsAdmin, async (req: Request, res: R
   return res.send(updatedProduct);
 });
 
-router.delete('/:id', checkAuthenticated, checkIsAdmin, async (req: Request, res: Response) => {
+router.delete('/:id', checkIsAdmin, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
     return res.status(400).send(INVALID_PRODUCT_ID);

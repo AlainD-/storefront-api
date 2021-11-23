@@ -5,7 +5,7 @@
   "main": "src/index.ts",
   "scripts": {
     "prestart": "npm run migrate:dev:up",
-    "start": "nodemon src/index.ts",
+    "start": "nodemon --exec npx ts-node src/index.ts",
     "build": "tsc --project ./",
     "lint": "eslint \"src/**/*.ts\"",
     "jasmine": "jasmine",
