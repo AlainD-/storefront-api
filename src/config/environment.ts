@@ -9,7 +9,8 @@ const {
   PUBLIC_KEY_PATH,
   BCRYPT_PASSWORD,
   SALT_ROUNDS,
-  PORT,
+  PORT: port,
+  PORT_TEST: testPort,
   POSTGRES_HOST,
   POSTGRES_PORT,
   POSTGRES_DB,
@@ -25,7 +26,8 @@ if (
   !PUBLIC_KEY_PATH ||
   !BCRYPT_PASSWORD ||
   !SALT_ROUNDS ||
-  !PORT ||
+  !port ||
+  !testPort ||
   !POSTGRES_HOST ||
   !POSTGRES_PORT ||
   !POSTGRES_DB ||
@@ -34,7 +36,9 @@ if (
   !POSTGRES_PASSWORD ||
   !POSTGRES_PASSWORD_TEST
 ) {
-  throw new Error('One or multiple mandatory configuration is or are missing');
+  throw new Error(
+    'One or multiple mandatory configuration is or are missing. Please refer to the README.md documentation for detailed instructions.'
+  );
 }
 
 let rsaPrivateKey: Buffer | null = null;
@@ -58,6 +62,8 @@ try {
 
 const RSA_PRIVATE_KEY: Buffer = rsaPrivateKey;
 const RSA_PUBLIC_KEY: Buffer = rsaPublicKey;
+const ENV: string | undefined = NODE_ENV?.trim();
+const PORT: string = ENV === 'test' ? testPort : port;
 
 export {
   PRIVATE_KEY_PATH,

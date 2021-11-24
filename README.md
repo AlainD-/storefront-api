@@ -1,12 +1,91 @@
 # StoreFront API
 
-## Postgres database with Docker
+RESTful API for the StoreFront application. The API contains endpoints to serve a shopping-like/ecommerce-like application.
 
-To use the docker database, run `docker-compose up`
+It powers RESTfull API endpoints through Express, JW capabilities for authentication and authorization, PostgreSQL database communication.
 
-## Todos
+## Installation
 
-* Add UNIQUE in products_in_orders with (order_id, product_id)
+### Environment Setup
+
+#### SSH key pair
+
+In order to use the JWT capability a mandatory SSH key pair is required.
+To generate a new key pair, you can use for instance:
+
+```bash
+ssh-keygen -t rsa -P "" -b 4096 -m PEM -f /your/ssh/path/private.key
+ssh-keygen -e -m PEM -f /your/ssh/path/private.key > /your/ssh/path/public.key.pub
+```
+
+Note: the local folder '.ssh' is ignored by git in the current configuration of the project. If you decide to put your key pair in the local .ssh folder, make sure that '.ssh' remains ignored and is not removed from the .gitignore file.
+
+#### .env file
+
+Create a `.env` file in the root folder and copy the content of the `.env.example` provided.
+Modify the values of the different configuration fields according to your installation.
+
+Example:
+
+```bash
+PRIVATE_KEY_PATH=/path/to/ssh/private.key
+PUBLIC_KEY_PATH=/path/to/ssh/public.key
+BCRYPT_PASSWORD=some-secret-password
+SALT_ROUNDS=10
+PORT=3000
+PORT_TEST=3010
+POSTGRES_HOST=127.0.0.1
+POSTGRES_PORT=5432
+POSTGRES_DB=shopping
+POSTGRES_DB_TEST=shopping_test
+POSTGRES_USER=shopping_user
+POSTGRES_PASSWORD=password123
+POSTGRES_PASSWORD_TEST=password123
+```
+
+### Installing packages
+
+Run in the terminal `npm i` to install the required packages for this application to be run locally
+
+### Databases
+
+This application uses POSTGRES databases. You either need to have PostgreSQL installed or Docker installed on your machine.
+
+#### Postgres database with Docker
+
+To use the docker database, run `docker-compose up` in the terminal in the root folder of this application
+
+#### Postgres database with PostgreSQL
+
+Follow the official installation instruction from the PostgreSQL website
+
+#### Instructions
+
+* The application uses 2 **postgres** databases:
+  * one used for running the local server `POSTGRES_DB`
+  * another one used for running the unit tests `POSTGRES_DB_TEST`
+* Make sure that these schemas exist in your environment.
+* Make sure that specified `POSTGRES_USER` exists, or create it otherwise.
+
+## Start
+
+### Local server
+
+To start the application locally on your machine execute in a terminal `npm start`.
+
+Note that the database will be migrated up with the missing migration scripts before starting the local server via the automatic script hook `prestart`.
+
+## Tests
+
+Execute in the terminal `npm test` to execute the unit tests of the application.
+
+Note that the database used for the unit tests will be automatically migrated up before the execution of the tests, and be reset down after the execution of all the unit tests, via the scripts hooks `pretest` and `posttest`.
+
+Note: in the current version of this application, the unit tests are executed on a built version of the application, and not in real time. The unit tests can be executed manually anytime though in parallel of the running local application as the 2 servers execute on different ports `PORT_TEST` and `PORT`.
+
+## Build
+
+To build the application execute in the terminal `npm run build`. The distribution built will be found in the local `dist` folder.
 
 ## API
 
@@ -30,3 +109,10 @@ To use the docker database, run `docker-compose up`
 * `authed` POST /users/:userId/orders/:orderId/products
 * `authed` PUT /users/:userId/orders/:orderId/products/:productId
 * `authed` DELETE /users/:userId/orders/:orderId/products/:productId
+
+## Todos
+
+Self notes for remaining tasks and/or future improvements
+
+* Add UNIQUE in products_in_orders with (order_id, product_id)
+* Add Swagger to document the API
