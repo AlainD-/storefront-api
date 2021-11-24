@@ -67,6 +67,22 @@ Follow the official installation instruction from the PostgreSQL website
 * Make sure that these schemas exist in your environment.
 * Make sure that specified `POSTGRES_USER` exists, or create it otherwise.
 
+#### Migration
+
+The `package.json` files contains a series of usefull scripts to easily migrate the databases up, down, or reset for the development database as well as for the test database.
+
+* Migration UP
+  * `npm run migrate:dev:up`
+  * `npm run migrate:test:up`
+
+* Migration DOWN (1 migration script down)
+  * `npm run migrate:dev:down`
+  * `npm run migrate:test:down`
+
+* Migration RESET, to reset to zero a database
+  * `npm run migrate:dev:reset`
+  * `npm run migrate:test:reset`
+
 ## Start
 
 ### Local server
@@ -88,6 +104,58 @@ Note: in the current version of this application, the unit tests are executed on
 To build the application execute in the terminal `npm run build`. The distribution built will be found in the local `dist` folder.
 
 ## API
+
+### Root URL
+
+All the API endpoints must be prefixed with `/api/v1`. In order to facilitate the reading of this documentation in the next sections, the prefix is intentionally not mentionned, as well as the address of the server, but are admitted to exists in real usage of this API.
+
+For instance, for a server running on localhost on port 3000, the instruction `GET /products` must be understood `GET http://localhost:3000/api/v1/products`.
+
+### Registering new user
+
+* To register a new user use the following endpoint:
+  * `POST /users`
+  * Body content:
+
+```json
+{
+  "email": "",
+  "firstName": "",
+  "lastName": "",
+  "password": ""
+}
+```
+
+### Authentication
+
+Most of the API use an authentication with a JWT token in the request header. For such requests, the token must be place in the `Authorization` header with a value `Bearer jwt.token.value` ("Bearer", space character, "the JWT token itself").
+
+The token is passed in the response body of the authentication endpoint:
+
+* `POST /authenticate`
+  * Body content:
+
+```json
+{
+  "email": "",
+  "password": ""
+}
+```
+
+* Response content:
+
+```json
+{
+  "token": "...",
+  "user": {}
+}
+```
+
+### Admin users
+
+Admin users have to be set directly in the database by setting the column `is_admin` to `1` in the `users` table for the desired user.
+
+### Complete list
 
 * `admin` GET /users
 * POST /users (registration)
