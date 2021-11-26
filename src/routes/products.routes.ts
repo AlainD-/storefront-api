@@ -1,5 +1,8 @@
 import express, { Router, Request, Response } from 'express';
-import { checkAuthenticated, checkIsAdmin } from '../middleware/auth';
+import BadRequest400Error from '../errors/bad-request-400.error';
+import Internal500Error from '../errors/internal-500.error';
+import NotFound404Error from '../errors/not-found-404.error';
+import { checkIsAdmin } from '../middleware/auth';
 import { Product } from '../models/product';
 import { ProductInput } from '../models/product-input';
 import { ProductStore, validate } from '../models/product.store';
@@ -14,7 +17,7 @@ router.get('/', async (_req: Request, res: Response) => {
   try {
     products = await ProductStore.index();
   } catch (_error) {
-    return res.status(500).send('Could not get the products');
+    return res.status(500).send(new Internal500Error('Could not get the products'));
   }
 
   return res.send(products);
@@ -23,14 +26,14 @@ router.get('/', async (_req: Request, res: Response) => {
 router.get('/:id', async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
-    return res.status(400).send(INVALID_PRODUCT_ID);
+    return res.status(400).send(new BadRequest400Error(INVALID_PRODUCT_ID));
   }
 
   const id: number = queryToNumber(qId);
   const product: Product | undefined = await ProductStore.show(id);
 
   if (!product) {
-    return res.status(404).send(PRODUCT_NOT_FOUND);
+    return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
   }
 
   return res.send(product);
@@ -39,7 +42,7 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', checkIsAdmin, async (req: Request, res: Response) => {
   const { error } = validate(req.body);
   if (error) {
-    return res.status(400).send(error.details[0]?.message);
+    return res.status(400).send(new BadRequest400Error(error.details[0]?.message));
   }
 
   try {
@@ -49,16 +52,20 @@ router.post('/', checkIsAdmin, async (req: Request, res: Response) => {
     if (!product) {
       return res
         .status(500)
-        .send('An unexpected error occurred during the creation of the product');
+        .send(
+          new Internal500Error('An unexpected error occurred during the creation of the product')
+        );
     }
 
-    return res.send(product);
+    return res.status(201).send(product);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } catch (err: any) {
     return res
       .status(500)
       .send(
-        `An unexpected error occurred during the creation of the product. ${err?.message ?? ''}`
+        new Internal500Error(
+          `An unexpected error occurred during the creation of the product. ${err?.message ?? ''}`
+        )
       );
   }
 });
@@ -66,12 +73,12 @@ router.post('/', checkIsAdmin, async (req: Request, res: Response) => {
 router.put('/:id', checkIsAdmin, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
-    return res.status(400).send(INVALID_PRODUCT_ID);
+    return res.status(400).send(new BadRequest400Error(INVALID_PRODUCT_ID));
   }
 
   const { error } = validate(req.body);
   if (error) {
-    return res.status(400).send(error.details[0]?.message);
+    return res.status(400).send(new BadRequest400Error(error.details[0]?.message));
   }
 
   const id: number = queryToNumber(qId);
@@ -79,7 +86,7 @@ router.put('/:id', checkIsAdmin, async (req: Request, res: Response) => {
   const product: Product | undefined = await ProductStore.show(id);
 
   if (!product) {
-    return res.status(404).send(PRODUCT_NOT_FOUND);
+    return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
   }
 
   const updatedProduct: Product | undefined = await ProductStore.update(id, {
@@ -94,14 +101,14 @@ router.put('/:id', checkIsAdmin, async (req: Request, res: Response) => {
 router.delete('/:id', checkIsAdmin, async (req: Request, res: Response) => {
   const { id: qId } = req.params;
   if (!isANumber(qId)) {
-    return res.status(400).send(INVALID_PRODUCT_ID);
+    return res.status(400).send(new BadRequest400Error(INVALID_PRODUCT_ID));
   }
 
   const id: number = queryToNumber(qId);
   const product: Product | undefined = await ProductStore.show(id);
 
   if (!product) {
-    return res.status(404).send(PRODUCT_NOT_FOUND);
+    return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
   }
 
   const deletedProduct: Product | undefined = await ProductStore.delete(id);

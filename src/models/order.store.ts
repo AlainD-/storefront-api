@@ -203,7 +203,10 @@ export class OrderStore {
         SELECT o.id, $1, $2
         FROM orders o
         LEFT JOIN products_in_orders po ON (o.id = po.order_id)
-        WHERE o.user_id = ($3) AND o.id = ($4) AND o.status = ($5) AND po.product_id NOT IN ($6)
+        WHERE o.user_id = ($3)
+        AND o.id = ($4)
+        AND o.status = ($5)
+        AND (po.product_id IS NULL OR po.product_id NOT IN ($6))
         LIMIT 1
         RETURNING id, order_id AS "orderId", product_id AS "productId", quantity;`;
       const rows: PurchasedProduct[] = await DatabaseService.runQuery<PurchasedProduct>(query, [

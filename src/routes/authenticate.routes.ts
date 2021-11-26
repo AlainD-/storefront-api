@@ -3,6 +3,9 @@ import { Credentials } from '../models/credentials';
 import { User } from '../models/user';
 import { AuthenticationStore, validate } from '../models/authentication.store';
 import { getJWTToken } from '../services/security.service';
+import Authentication401Error from '../errors/authentication-401.error';
+import BadRequest400Error from '../errors/bad-request-400.error';
+import Internal500Error from '../errors/internal-500.error';
 
 const router: Router = express.Router();
 
@@ -12,7 +15,7 @@ const router: Router = express.Router();
 router.post('/', async (req: Request, res: Response) => {
   const { error } = validate(req.body);
   if (error) {
-    return res.status(400).send(error.details[0]?.message);
+    return res.status(400).send(new BadRequest400Error(error.details[0]?.message));
   }
 
   try {
@@ -20,7 +23,7 @@ router.post('/', async (req: Request, res: Response) => {
     const user: User | null = await AuthenticationStore.authenticate({ email, password });
 
     if (!user) {
-      return res.status(401).send('Authentication failed');
+      return res.status(401).send(new Authentication401Error('Authentication failed'));
     }
 
     const token: string = getJWTToken(user);
@@ -29,7 +32,11 @@ router.post('/', async (req: Request, res: Response) => {
   } catch (err: any) {
     return res
       .status(500)
-      .send(`An unexpected error occurred during the authentication. ${err?.message ?? ''}`);
+      .send(
+        new Internal500Error(
+          `An unexpected error occurred during the authentication. ${err?.message ?? ''}`
+        )
+      );
   }
 });
 
