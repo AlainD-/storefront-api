@@ -39,14 +39,14 @@ router.get('/', checkIsAdmin, async (_req: Request, res: Response) => {
   return res.send(users);
 });
 
-router.get('/:id', checkIsCurrentUser, async (req: Request, res: Response) => {
-  const { id: qId } = req.params;
-  if (!isANumber(qId)) {
+router.get('/:userId', checkIsCurrentUser, async (req: Request, res: Response) => {
+  const { userId: qUserId } = req.params;
+  if (!isANumber(qUserId)) {
     return res.status(400).send(new BadRequest400Error(INVALID_USER_ID));
   }
 
-  const id: number = queryToNumber(qId);
-  const user: User | undefined = await UserStore.show(id);
+  const userId: number = queryToNumber(qUserId);
+  const user: User | undefined = await UserStore.show(userId);
 
   if (!user) {
     return res.status(404).send(new NotFound404Error(USER_NOT_FOUND));
@@ -92,9 +92,9 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-router.put('/:id', checkIsCurrentUser, async (req: Request, res: Response) => {
-  const { id: qId } = req.params;
-  if (!isANumber(qId)) {
+router.put('/:userId', checkIsCurrentUser, async (req: Request, res: Response) => {
+  const { userId: qUserId } = req.params;
+  if (!isANumber(qUserId)) {
     return res.status(400).send(new BadRequest400Error(INVALID_USER_ID));
   }
 
@@ -103,15 +103,19 @@ router.put('/:id', checkIsCurrentUser, async (req: Request, res: Response) => {
     return res.status(400).send(new BadRequest400Error(error.details[0]?.message));
   }
 
-  const id: number = queryToNumber(qId);
+  const userId: number = queryToNumber(qUserId);
   const { firstName, lastName, email } = req.body;
-  const user: User | undefined = await UserStore.show(id);
+  const user: User | undefined = await UserStore.show(userId);
 
   if (!user) {
     return res.status(404).send(new NotFound404Error(USER_NOT_FOUND));
   }
 
-  const updatedUser: User | undefined = await UserStore.update(id, { firstName, lastName, email });
+  const updatedUser: User | undefined = await UserStore.update(userId, {
+    firstName,
+    lastName,
+    email,
+  });
 
   if (!updatedUser) {
     return res
@@ -122,20 +126,20 @@ router.put('/:id', checkIsCurrentUser, async (req: Request, res: Response) => {
   return res.send(updatedUser);
 });
 
-router.delete('/:id', checkIsAdmin, async (req: Request, res: Response) => {
-  const { id: qId } = req.params;
-  if (!isANumber(qId)) {
+router.delete('/:userId', checkIsAdmin, async (req: Request, res: Response) => {
+  const { userId: qUserId } = req.params;
+  if (!isANumber(qUserId)) {
     return res.status(400).send(new BadRequest400Error(INVALID_USER_ID));
   }
 
-  const id: number = queryToNumber(qId);
-  const user: User | undefined = await UserStore.show(id);
+  const userId: number = queryToNumber(qUserId);
+  const user: User | undefined = await UserStore.show(userId);
 
   if (!user) {
     return res.status(404).send(new NotFound404Error(USER_NOT_FOUND));
   }
 
-  const deletedUser: User | undefined = await UserStore.delete(id);
+  const deletedUser: User | undefined = await UserStore.delete(userId);
 
   if (!deletedUser) {
     return res
