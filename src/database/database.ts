@@ -1,6 +1,6 @@
 import { Pool } from 'pg';
 import {
-  NODE_ENV,
+  ENV,
   POSTGRES_DB,
   POSTGRES_DB_TEST,
   POSTGRES_HOST,
@@ -9,8 +9,6 @@ import {
   POSTGRES_PORT,
   POSTGRES_USER,
 } from '../config/environment';
-
-const ENV: string | undefined = NODE_ENV?.trim();
 
 const pool: Pool = new Pool({
   host: POSTGRES_HOST,

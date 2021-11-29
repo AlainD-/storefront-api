@@ -1,5 +1,5 @@
 import supertest, { Response, SuperTest, Test } from 'supertest';
-import app from '../../index';
+import app from '../../app';
 import DatabaseService from '../../services/database.service';
 import { User } from '../../models/user';
 import { getJWTToken } from '../../services/security.service';

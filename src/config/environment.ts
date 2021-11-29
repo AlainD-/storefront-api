@@ -9,8 +9,7 @@ const {
   PUBLIC_KEY_PATH,
   BCRYPT_PASSWORD,
   SALT_ROUNDS,
-  PORT: port,
-  PORT_TEST: testPort,
+  PORT,
   POSTGRES_HOST,
   POSTGRES_PORT,
   POSTGRES_DB,
@@ -26,8 +25,6 @@ if (
   !PUBLIC_KEY_PATH ||
   !BCRYPT_PASSWORD ||
   !SALT_ROUNDS ||
-  !port ||
-  !testPort ||
   !POSTGRES_HOST ||
   !POSTGRES_PORT ||
   !POSTGRES_DB ||
@@ -63,7 +60,6 @@ try {
 const RSA_PRIVATE_KEY: Buffer = rsaPrivateKey;
 const RSA_PUBLIC_KEY: Buffer = rsaPublicKey;
 const ENV: string | undefined = NODE_ENV?.trim();
-const PORT: string = ENV === 'test' ? testPort : port;
 
 export {
   PRIVATE_KEY_PATH,
@@ -78,7 +74,7 @@ export {
   POSTGRES_USER,
   POSTGRES_PASSWORD,
   POSTGRES_PASSWORD_TEST,
-  NODE_ENV,
+  ENV,
   RSA_PRIVATE_KEY,
   RSA_PUBLIC_KEY,
 };
