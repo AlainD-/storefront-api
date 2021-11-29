@@ -456,6 +456,7 @@ describe('PUT /api/v1/users/:id', () => {
   let maxId: number;
   let user: { firstName: unknown; lastName: unknown; email: unknown };
   let id: number;
+  let token: string;
 
   describe('Validation', () => {
     describe('"firstName" property', () => {
@@ -468,11 +469,36 @@ describe('PUT /api/v1/users/:id', () => {
 
       beforeEach(async () => {
         user = { firstName: 'x', lastName: 'y', email: 'z@z.z' };
+        token = getJWTToken({ id, ...user } as User);
+      });
+
+      it('should respond a 412 error for non authenticated requests without token', async () => {
+        const inexistentId = maxId + 1;
+        const response: Response = await request.put(`${usersEndPoint}/${inexistentId}`).send(user);
+        const { status, type, body } = response;
+        expect(status).toBe(412);
+        expect(type).toContain('json');
+        expect(body.message).toMatch(/header.+missing/i);
+      });
+
+      it('should respond a 403 error when it is not the current user', async () => {
+        const response: Response = await request
+          .put(`${usersEndPoint}/1`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
+        const { status, type, body } = response;
+        expect(status).toBe(403);
+        expect(type).toContain('json');
+        expect(body.message).toMatch(/not authorized/i);
       });
 
       it('should respond a 404 error when the id does not exist', async () => {
         const inexistentId = maxId + 1;
-        const response: Response = await request.put(`${usersEndPoint}/${inexistentId}`).send(user);
+        token = getJWTToken({ id: inexistentId, ...user } as User);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${inexistentId}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(404);
         expect(type).toContain('json');
@@ -481,7 +507,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the firstName is missing', async () => {
         user.firstName = undefined;
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -490,13 +519,19 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the firstName is an empty string', async () => {
         user.firstName = '';
-        let response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        let response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         expect(response.status).toBe(400);
         expect(response.type).toContain('json');
         expect(response.body.message).toMatch(/firstName.+not allowed to be empty/);
 
         user.firstName = null;
-        response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         expect(response.status).toBe(400);
         expect(response.type).toContain('json');
         expect(response.body.message).toMatch(/firstName.+must be a string/);
@@ -504,7 +539,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the firstName is not a string: boolean true', async () => {
         user.firstName = true;
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -513,7 +551,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the firstName is not a string: number 1', async () => {
         user.firstName = 1;
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -522,7 +563,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the firstName is not a string: object {}', async () => {
         user.firstName = {};
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -531,7 +575,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the firstName is not a string: array []', async () => {
         user.firstName = [];
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -548,11 +595,15 @@ describe('PUT /api/v1/users/:id', () => {
 
       beforeEach(async () => {
         user = { firstName: 'x', lastName: 'y', email: 'z@z.z' };
+        token = getJWTToken({ id, ...user } as User);
       });
 
       it('should respond 400 error if the lastName is missing', async () => {
         user.lastName = undefined;
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -561,13 +612,19 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the lastName is an empty string', async () => {
         user.lastName = '';
-        let response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        let response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         expect(response.status).toBe(400);
         expect(response.type).toContain('json');
         expect(response.body.message).toMatch(/lastName.+not allowed to be empty/);
 
         user.lastName = null;
-        response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         expect(response.status).toBe(400);
         expect(response.type).toContain('json');
         expect(response.body.message).toMatch(/lastName.+must be a string/);
@@ -575,7 +632,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the lastName is not a string: boolean true', async () => {
         user.lastName = true;
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -584,7 +644,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the lastName is not a string: number 1', async () => {
         user.lastName = 1;
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -593,7 +656,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the lastName is not a string: object {}', async () => {
         user.lastName = {};
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -602,7 +668,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the lastName is not a string: array []', async () => {
         user.lastName = [];
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -619,11 +688,15 @@ describe('PUT /api/v1/users/:id', () => {
 
       beforeEach(async () => {
         user = { firstName: 'x', lastName: 'y', email: 'z@z.z' };
+        token = getJWTToken({ id, ...user } as User);
       });
 
       it('should respond 400 error if the email is missing', async () => {
         user.email = undefined;
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -632,13 +705,19 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the email is an empty string', async () => {
         user.email = '';
-        let response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        let response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         expect(response.status).toBe(400);
         expect(response.type).toContain('json');
         expect(response.body.message).toMatch(/email.+not allowed to be empty/);
 
         user.email = null;
-        response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         expect(response.status).toBe(400);
         expect(response.type).toContain('json');
         expect(response.body.message).toMatch(/email.+must be a string/);
@@ -646,7 +725,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the email is not a string: boolean true', async () => {
         user.email = true;
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -655,7 +737,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the email is not a string: number 1', async () => {
         user.email = 1;
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -664,7 +749,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the email is not a string: object {}', async () => {
         user.email = {};
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -673,7 +761,10 @@ describe('PUT /api/v1/users/:id', () => {
 
       it('should respond 400 error if the email is not a string: array []', async () => {
         user.email = [];
-        const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+        const response: Response = await request
+          .put(`${usersEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(user);
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
@@ -691,10 +782,14 @@ describe('PUT /api/v1/users/:id', () => {
 
     beforeEach(async () => {
       user = { firstName: 'x', lastName: 'y', email: 'z@z.z' };
+      token = getJWTToken({ id, ...user } as User);
     });
 
     it('should update the firstName "x" and lastName "y"', async () => {
-      const response: Response = await request.put(`${usersEndPoint}/${id}`).send(user);
+      const response: Response = await request
+        .put(`${usersEndPoint}/${id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(user);
       const { status, type, body } = response;
       expect(status).toBe(200);
       expect(type).toContain('json');
@@ -706,6 +801,8 @@ describe('PUT /api/v1/users/:id', () => {
 describe('DELETE /api/v1/users/:id', () => {
   let maxId: number;
   let id: number;
+  const issuer: User = { id: 0, firstName: '', lastName: '', email: '', isAdmin: true };
+  let token: string;
 
   beforeAll(async () => {
     await deleteAllUsers();
@@ -714,9 +811,36 @@ describe('DELETE /api/v1/users/:id', () => {
     maxId = await maxUserId();
   });
 
-  it('should respond a 404 error when the id does not exist', async () => {
+  beforeEach(() => {
+    token = getJWTToken(issuer);
+  });
+
+  it('should respond a 412 error for non authenticated requests without token', async () => {
     const inexistentId = maxId + 1;
     const response: Response = await request.delete(`${usersEndPoint}/${inexistentId}`);
+    const { status, type, body } = response;
+    expect(status).toBe(412);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/header.+missing/i);
+  });
+
+  it('should respond a 403 error for non admins', async () => {
+    const nonAdmin: User = { ...issuer, isAdmin: false };
+    token = getJWTToken(nonAdmin);
+    const response: Response = await request
+      .get(usersEndPoint)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not authorized/i);
+  });
+
+  it('should respond a 404 error when the id does not exist', async () => {
+    const inexistentId = maxId + 1;
+    const response: Response = await request
+      .delete(`${usersEndPoint}/${inexistentId}`)
+      .set('Authorization', `Bearer ${token}`);
     const { status, type, body } = response;
     expect(status).toBe(404);
     expect(type).toContain('json');
@@ -724,18 +848,24 @@ describe('DELETE /api/v1/users/:id', () => {
   });
 
   it('should delete the latest added user', async () => {
-    const responseBeforeDelete: Response = await request.get(`${usersEndPoint}`);
+    const responseBeforeDelete: Response = await request
+      .get(`${usersEndPoint}`)
+      .set('Authorization', `Bearer ${token}`);
     const numberOfUsersBefore: number = responseBeforeDelete.body.length;
 
-    const response: Response = await request.delete(`${usersEndPoint}/${id}`);
+    const response: Response = await request
+      .delete(`${usersEndPoint}/${id}`)
+      .set('Authorization', `Bearer ${token}`);
     const { status, type, body } = response;
     expect(status).toBe(200);
     expect(type).toContain('json');
     expect(body).toEqual({ id, firstName: 'a', lastName: 'b', email: 'd@d.d', isAdmin: 0 });
 
-    const responseAfterDelete: Response = await request.get(`${usersEndPoint}`);
+    const responseAfterDelete: Response = await request
+      .get(`${usersEndPoint}`)
+      .set('Authorization', `Bearer ${token}`);
     const numberOfUsersAfter: number = responseAfterDelete.body.length;
 
-    expect(numberOfUsersBefore - 1 === numberOfUsersAfter).toBeTruthy();
+    expect(numberOfUsersBefore - 1).toBe(numberOfUsersAfter);
   });
 });
