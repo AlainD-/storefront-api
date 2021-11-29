@@ -96,7 +96,7 @@ Execute in the terminal `npm test` to execute the unit tests of the application.
 
 Note that the database used for the unit tests will be automatically migrated up before the execution of the tests, and be reset down after the execution of all the unit tests, via the scripts hooks `pretest` and `posttest`.
 
-Note: in the current version of this application, the unit tests are executed on a built version of the application, and not in real time. The unit tests can be executed manually anytime though in parallel of the running local application as the 2 servers execute on different ports `PORT_TEST` and `PORT`.
+Note: in the current version of this application, the unit tests are executed on a built version of the application, and not in real time.
 
 ## Build
 
@@ -153,6 +153,53 @@ The token is passed in the response body of the authentication endpoint:
 ### Admin users
 
 Admin users have to be set directly in the database by setting the column `is_admin` to `1` in the `users` table for the desired user.
+
+### Models
+
+* User
+
+```typescript
+{
+  id: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  isAdmin?: boolean;
+}
+```
+
+* Product
+
+```typescript
+{
+  id: number;
+  name: string;
+  price: number;
+  category?: string;
+}
+```
+
+* Order
+
+```typescript
+{
+  id: number;
+  userId: number;
+  status: OrderStatus;
+  items?: OrderItem[];
+}
+```
+
+* OrderItem
+
+```typescript
+{
+  id: number;
+  orderId: number;
+  productId: number;
+  quantity: number;
+}
+```
 
 ### Complete list
 

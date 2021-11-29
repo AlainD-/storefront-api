@@ -7,7 +7,7 @@ export const validate = (data: ProductInput): ValidationResult => {
   const joiSchema: Joi.ObjectSchema<ProductInput> = Joi.object({
     id: Joi.number(),
     name: Joi.string().max(255).required(),
-    price: Joi.number().required(),
+    price: Joi.number().positive().required(),
     category: Joi.string().max(100).allow(null),
   });
   return joiSchema.validate(data);

@@ -853,19 +853,30 @@ describe('DELETE /api/v1/users/:id', () => {
       .set('Authorization', `Bearer ${token}`);
     const numberOfUsersBefore: number = responseBeforeDelete.body.length;
 
-    const response: Response = await request
+    let response: Response = await request
       .delete(`${usersEndPoint}/${id}`)
       .set('Authorization', `Bearer ${token}`);
-    const { status, type, body } = response;
-    expect(status).toBe(200);
-    expect(type).toContain('json');
-    expect(body).toEqual({ id, firstName: 'a', lastName: 'b', email: 'd@d.d', isAdmin: 0 });
+    expect(response.status).toBe(200);
+    expect(response.type).toContain('json');
+    expect(response.body).toEqual({
+      id,
+      firstName: 'a',
+      lastName: 'b',
+      email: 'd@d.d',
+      isAdmin: 0,
+    });
 
     const responseAfterDelete: Response = await request
       .get(`${usersEndPoint}`)
       .set('Authorization', `Bearer ${token}`);
     const numberOfUsersAfter: number = responseAfterDelete.body.length;
-
     expect(numberOfUsersBefore - 1).toBe(numberOfUsersAfter);
+
+    response = await request
+      .delete(`${usersEndPoint}/${id}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(response.status).toBe(404);
+    expect(response.type).toContain('json');
+    expect(response.body.message).toMatch(/not found/i);
   });
 });
