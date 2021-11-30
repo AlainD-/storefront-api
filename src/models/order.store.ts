@@ -2,7 +2,7 @@ import Joi, { ValidationResult } from 'joi';
 import DatabaseService from '../services/database.service';
 import { Order } from './order';
 import { OrderStatus } from './order-status.type';
-import { PurchasedProduct } from './purchased-product';
+import { OrderItem } from './order-item';
 
 declare interface OrderRow {
   id: number;
@@ -25,7 +25,7 @@ export const validateOrder = (data: Order): ValidationResult => {
     id: Joi.number(),
     userId: Joi.number().required(),
     status: Joi.string().valid('active', 'complete').required(),
-    products: Joi.array().items(
+    items: Joi.array().items(
       Joi.object({
         id: Joi.number(),
         orderId: Joi.number(),
@@ -37,7 +37,7 @@ export const validateOrder = (data: Order): ValidationResult => {
   return joiSchema.validate(data);
 };
 
-export const validateProduct = (data: {
+export const validateOrderItem = (data: {
   productId: number;
   quantity: number;
 }): ValidationResult => {
@@ -58,8 +58,8 @@ export class OrderStore {
             id: row.id,
             userId: row.userId,
             status: row.status,
-            products: [
-              ...(acc[row.id]?.products ?? []),
+            items: [
+              ...(acc[row.id]?.items ?? []),
               ...(row.relationId
                 ? [
                     {
@@ -111,22 +111,6 @@ export class OrderStore {
     }
   }
 
-  // static async show(id: number): Promise<Order | undefined> {
-  //   try {
-  //     const query = `SELECT o.id, o.user_id AS "userId", o.status, p.product_id AS "productId", p.quantity, p.id AS "relationId"
-  //       FROM orders o
-  //       LEFT JOIN products_in_orders p ON (o.id = p.order_id)
-  //       WHERE o.id = ($1)
-  //       ORDER BY o.user_id ASC, o.id ASC`;
-  //     const rows: OrderRow[] = await DatabaseService.runQuery<OrderRow>(query, [id]);
-  //     const orders: Order[] = OrderStore.orderRowsToOrders(rows);
-
-  //     return orders[0];
-  //   } catch (error) {
-  //     throw new Error(`Could not find the order with id ${id}. ${error}`);
-  //   }
-  // }
-
   static async showUserOrder({
     userId,
     orderId,
@@ -165,7 +149,7 @@ export class OrderStore {
 
   static async updateUserOrder(
     id: number,
-    { userId, orderId, status }: { userId: number; orderId: number; status: OrderStatus }
+    { userId, status }: { userId: number; status: OrderStatus }
   ): Promise<Order | undefined> {
     try {
       if (status === 'complete') {
@@ -185,7 +169,20 @@ export class OrderStore {
     }
   }
 
-  static async addUserOrderProduct({
+  static async showUserOrderItem(id: number): Promise<OrderItem | undefined> {
+    try {
+      const query = `SELECT id, product_id AS "productId", order_id AS "orderId", quantity
+        FROM products_in_orders
+        WHERE id = ($1)`;
+      const items: OrderItem[] = await DatabaseService.runQuery<OrderItem>(query, [id]);
+
+      return items[0];
+    } catch (error) {
+      throw new Error(`Could not find the order item with id ${id}. ${error}`);
+    }
+  }
+
+  static async addUserOrderItem({
     userId,
     orderId,
     productId,
@@ -195,7 +192,7 @@ export class OrderStore {
     orderId: number;
     productId: number;
     quantity: number;
-  }): Promise<PurchasedProduct | undefined> {
+  }): Promise<OrderItem | undefined> {
     try {
       // validate that the product is not in the order yet!
       // validate that the order is still active!
@@ -209,7 +206,7 @@ export class OrderStore {
         AND (po.product_id IS NULL OR po.product_id NOT IN ($6))
         LIMIT 1
         RETURNING id, order_id AS "orderId", product_id AS "productId", quantity;`;
-      const rows: PurchasedProduct[] = await DatabaseService.runQuery<PurchasedProduct>(query, [
+      const rows: OrderItem[] = await DatabaseService.runQuery<OrderItem>(query, [
         productId,
         quantity,
         userId,
@@ -226,30 +223,34 @@ export class OrderStore {
     }
   }
 
-  static async updateUserOrderProduct({
-    userId,
-    orderId,
-    productId,
-    quantity,
-  }: {
-    userId: number;
-    orderId: number;
-    productId: number;
-    quantity: number;
-  }): Promise<PurchasedProduct | undefined> {
+  static async updateUserOrderItem(
+    id: number,
+    {
+      userId,
+      orderId,
+      productId,
+      quantity,
+    }: {
+      userId: number;
+      orderId: number;
+      productId: number;
+      quantity: number;
+    }
+  ): Promise<OrderItem | undefined> {
     try {
       // validate that the product is in the order already!
       // validate that the order is still active!
       const query = `UPDATE products_in_orders
         SET quantity = ($1)
-        WHERE product_id = ($2) AND order_id IN (
+        WHERE id = ($1) AND product_id = ($2) AND order_id IN (
           SELECT id
           FROM orders
           WHERE user_id = ($3) AND order_id = ($4) AND status = ($5)
         )
         RETURNING id, order_id AS "orderId", product_id AS "productId", quantity;`;
-      const rows: PurchasedProduct[] = await DatabaseService.runQuery<PurchasedProduct>(query, [
+      const rows: OrderItem[] = await DatabaseService.runQuery<OrderItem>(query, [
         quantity,
+        id,
         productId,
         userId,
         orderId,
@@ -264,27 +265,27 @@ export class OrderStore {
     }
   }
 
-  static async deleteUserOrderProduct({
-    userId,
-    orderId,
-    productId,
-  }: {
-    userId: number;
-    orderId: number;
-    productId: number;
-  }): Promise<PurchasedProduct | undefined> {
+  static async deleteUserOrderItem(
+    id: number,
+    {
+      userId,
+      orderId,
+    }: {
+      userId: number;
+      orderId: number;
+    }
+  ): Promise<OrderItem | undefined> {
     try {
-      // @todo validate that the product is in the order already!
       // @todo validate that the order is still active!
       const query = `DELETE FROM products_in_orders
-        WHERE product_id = ($1) AND order_id IN (
+        WHERE id = ($1) AND order_id IN (
           SELECT id
           FROM orders
           WHERE user_id = ($2) AND id = ($3) AND status = ($4)
         )
         RETURNING id, order_id AS "orderId", product_id AS "productId", quantity;`;
-      const rows: PurchasedProduct[] = await DatabaseService.runQuery<PurchasedProduct>(query, [
-        productId,
+      const rows: OrderItem[] = await DatabaseService.runQuery<OrderItem>(query, [
+        id,
         userId,
         orderId,
         'active',
@@ -293,7 +294,7 @@ export class OrderStore {
       return rows[0];
     } catch (error) {
       throw new Error(
-        `Could not delete the product id ${productId} from the user's order id ${orderId}. ${error}`
+        `Could not delete the order item id ${id} from the user's order id ${orderId}. ${error}`
       );
     }
   }

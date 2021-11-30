@@ -1,9 +1,9 @@
 import { OrderStatus } from './order-status.type';
-import { PurchasedProduct } from './purchased-product';
+import { OrderItem } from './order-item';
 
 export interface Order {
   id: number;
   userId: number;
   status: OrderStatus;
-  products?: PurchasedProduct[];
+  items?: OrderItem[];
 }

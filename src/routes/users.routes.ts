@@ -10,11 +10,11 @@ import {
   OrderStore,
   validateCreateOrder,
   validateOrder,
-  validateProduct,
+  validateOrderItem,
 } from '../models/order.store';
 import { Product } from '../models/product';
 import { ProductStore } from '../models/product.store';
-import { PurchasedProduct } from '../models/purchased-product';
+import { OrderItem } from '../models/order-item';
 import { User } from '../models/user';
 import { UserInput } from '../models/user-input';
 import { UserStore, validateUser, validateUserInput } from '../models/user.store';
@@ -23,9 +23,10 @@ import { isANumber, queryToNumber } from '../services/common-validation.service'
 const router: Router = express.Router();
 const INVALID_USER_ID = 'The user id is not a valid number';
 const INVALID_ORDER_ID = 'The order id is not a valid number';
-const INVALID_PRODUCT_ID = 'The product id is not a valid number';
+const INVALID_ORDER_ITEM_ID = 'The order item id is not a valid number';
 const USER_NOT_FOUND = 'The user with the given id was not found';
 const ORDER_NOT_FOUND = 'The order with the given id was not found';
+const ORDER_ITEM_NOT_FOUND = 'The order item with the given id was not found';
 const PRODUCT_NOT_FOUND = 'The product with the given id was not found';
 
 router.get('/', checkIsAdmin, async (_req: Request, res: Response) => {
@@ -150,7 +151,7 @@ router.delete('/:userId', checkIsAdmin, async (req: Request, res: Response) => {
   return res.send(deletedUser);
 });
 
-router.get('/:userId/orders', checkIsCurrentUser, async (req: Request, res: Response) => {
+router.get('/:userId/orders/', checkIsCurrentUser, async (req: Request, res: Response) => {
   const { userId: qUserId } = req.params;
   if (!isANumber(qUserId)) {
     return res.status(400).send(new BadRequest400Error(INVALID_USER_ID));
@@ -183,7 +184,7 @@ router.get('/:userId/orders/:orderId', checkIsCurrentUser, async (req: Request, 
   return res.send(order);
 });
 
-router.post('/:userId/orders', checkIsCurrentUser, async (req: Request, res: Response) => {
+router.post('/:userId/orders/', checkIsCurrentUser, async (req: Request, res: Response) => {
   const { error } = validateCreateOrder(req.body);
   if (error) {
     return res.status(400).send(new BadRequest400Error(error.details[0]?.message));
@@ -263,7 +264,6 @@ router.put('/:userId/orders/:orderId', checkIsCurrentUser, async (req: Request, 
 
   const updatedOrder: Order | undefined = await OrderStore.updateUserOrder(orderId, {
     userId,
-    orderId,
     status,
   });
 
@@ -277,7 +277,7 @@ router.put('/:userId/orders/:orderId', checkIsCurrentUser, async (req: Request, 
 });
 
 router.post(
-  '/:userId/orders/:orderId/products',
+  '/:userId/orders/:orderId/items',
   checkIsCurrentUser,
   async (req: Request, res: Response) => {
     const { userId: qUserId, orderId: qOrderId } = req.params;
@@ -288,7 +288,7 @@ router.post(
       return res.status(400).send(new BadRequest400Error(INVALID_ORDER_ID));
     }
 
-    const { error } = validateProduct(req.body);
+    const { error } = validateOrderItem(req.body);
     if (error) {
       return res.status(400).send(new BadRequest400Error(error.details[0]?.message));
     }
@@ -311,7 +311,7 @@ router.post(
       return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
     }
 
-    const item: PurchasedProduct | undefined = await OrderStore.addUserOrderProduct({
+    const item: OrderItem | undefined = await OrderStore.addUserOrderItem({
       userId,
       orderId,
       productId,
@@ -333,21 +333,21 @@ router.post(
 );
 
 router.put(
-  '/:userId/orders/:orderId/products/:productId',
+  '/:userId/orders/:orderId/items/:id',
   checkIsCurrentUser,
   async (req: Request, res: Response) => {
-    const { userId: qUserId, orderId: qOrderId, productId: qProductId } = req.params;
+    const { userId: qUserId, orderId: qOrderId, id: qId } = req.params;
     if (!isANumber(qUserId)) {
       return res.status(400).send(new BadRequest400Error(INVALID_USER_ID));
     }
     if (!isANumber(qOrderId)) {
       return res.status(400).send(new BadRequest400Error(INVALID_ORDER_ID));
     }
-    if (!isANumber(qProductId)) {
-      return res.status(400).send(new BadRequest400Error(INVALID_PRODUCT_ID));
+    if (!isANumber(qId)) {
+      return res.status(400).send(new BadRequest400Error(INVALID_ORDER_ITEM_ID));
     }
 
-    const { error } = validateProduct(req.body);
+    const { error } = validateOrderItem(req.body);
     if (error) {
       return res.status(400).send(new BadRequest400Error(error.details[0]?.message));
     }
@@ -360,16 +360,20 @@ router.put(
       return res.status(404).send(new NotFound404Error(ORDER_NOT_FOUND));
     }
 
-    const { productId, quantity } = req.body as { productId: number; quantity: number };
-    if (+qProductId !== productId) {
-      return res.status(400).send(new BadRequest400Error('Mismatched product ids'));
+    const { id, productId, quantity } = req.body as {
+      id: number;
+      productId: number;
+      quantity: number;
+    };
+    if (+qId !== id) {
+      return res.status(400).send(new BadRequest400Error('Mismatched order item ids'));
     }
     const product: Product | undefined = await ProductStore.show(productId);
     if (!product) {
       return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
     }
 
-    const item: PurchasedProduct | undefined = await OrderStore.updateUserOrderProduct({
+    const item: OrderItem | undefined = await OrderStore.updateUserOrderItem(id, {
       userId,
       orderId,
       productId,
@@ -391,40 +395,39 @@ router.put(
 );
 
 router.delete(
-  '/:userId/orders/:orderId/products/:productId',
+  '/:userId/orders/:orderId/items/:id',
   checkIsCurrentUser,
   async (req: Request, res: Response) => {
-    const { userId: qUserId, orderId: qOrderId, productId: qProductId } = req.params;
+    const { userId: qUserId, orderId: qOrderId, id: qId } = req.params;
     if (!isANumber(qUserId)) {
       return res.status(400).send(new BadRequest400Error(INVALID_USER_ID));
     }
     if (!isANumber(qOrderId)) {
       return res.status(400).send(new BadRequest400Error(INVALID_ORDER_ID));
     }
-    if (!isANumber(qProductId)) {
-      return res.status(400).send(new BadRequest400Error(INVALID_PRODUCT_ID));
+    if (!isANumber(qId)) {
+      return res.status(400).send(new BadRequest400Error(INVALID_ORDER_ITEM_ID));
     }
 
     const userId: number = queryToNumber(qUserId);
     const orderId: number = queryToNumber(qOrderId);
-    const productId: number = queryToNumber(qProductId);
+    const id: number = queryToNumber(qId);
     const order: Order | undefined = await OrderStore.showUserOrder({ userId, orderId });
     if (!order) {
       return res.status(404).send(new NotFound404Error(ORDER_NOT_FOUND));
     }
 
-    const product: Product | undefined = await ProductStore.show(productId);
-    if (!product) {
-      return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
+    const item: OrderItem | undefined = await OrderStore.showUserOrderItem(id);
+    if (!item) {
+      return res.status(404).send(new NotFound404Error(ORDER_ITEM_NOT_FOUND));
     }
 
-    const item: PurchasedProduct | undefined = await OrderStore.deleteUserOrderProduct({
+    const deletedItem: OrderItem | undefined = await OrderStore.deleteUserOrderItem(id, {
       userId,
       orderId,
-      productId,
     });
 
-    if (!item) {
+    if (!deletedItem) {
       return res
         .status(500)
         .send(
@@ -434,7 +437,7 @@ router.delete(
         );
     }
 
-    return res.send(item);
+    return res.send(deletedItem);
   }
 );
 
