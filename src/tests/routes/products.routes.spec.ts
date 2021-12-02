@@ -16,7 +16,7 @@ const deleteAllProducts = async (): Promise<void> => {
 
 const deleteAllCategories = async (): Promise<void> => {
   const query = 'DELETE FROM categories;';
-  await DatabaseService.runQuery<Product>(query);
+  await DatabaseService.runQuery<Category>(query);
 };
 
 const insertCategory = async (name = 'c'): Promise<Category> => {
@@ -601,7 +601,7 @@ describe('DELETE /api/v1/products/:id', () => {
     const responseBeforeDelete: Response = await request
       .get(`${productsEndPoint}`)
       .set('Authorization', `Bearer ${token}`);
-    const numberOfUsersBefore: number = responseBeforeDelete.body.length;
+    const numberOfItemsBefore: number = responseBeforeDelete.body.length;
 
     let response: Response = await request
       .delete(`${productsEndPoint}/${id}`)
@@ -619,8 +619,8 @@ describe('DELETE /api/v1/products/:id', () => {
     const responseAfterDelete: Response = await request
       .get(`${productsEndPoint}`)
       .set('Authorization', `Bearer ${token}`);
-    const numberOfUsersAfter: number = responseAfterDelete.body.length;
-    expect(numberOfUsersBefore - 1).toBe(numberOfUsersAfter);
+    const numberOfItemsAfter: number = responseAfterDelete.body.length;
+    expect(numberOfItemsBefore - 1).toBe(numberOfItemsAfter);
 
     response = await request
       .delete(`${productsEndPoint}/${id}`)
