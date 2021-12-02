@@ -17,11 +17,14 @@ export const validate = (data: ProductInput): ValidationResult => {
 export class ProductStore {
   private columns = 'id, name, price, category_id AS "categoryId", image_url AS "imageUrl"';
 
-  async index(): Promise<Product[]> {
+  async index({ categoryId }: { categoryId?: number }): Promise<Product[]> {
     try {
-      const query = `SELECT ${this.columns} FROM products;`;
+      const query = `SELECT ${this.columns}
+        FROM products
+        ${categoryId ? 'WHERE category_id = ($1)' : ''};`;
+      const values: number[] | undefined = categoryId ? [categoryId] : undefined;
 
-      const products: Product[] = await DatabaseService.runQuery<Product>(query);
+      const products: Product[] = await DatabaseService.runQuery<Product>(query, values);
       return products;
     } catch (error) {
       throw new Error(`Could not get the products. ${error}`);

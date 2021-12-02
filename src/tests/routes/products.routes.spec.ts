@@ -83,6 +83,28 @@ describe('GET /api/v1/products', () => {
       imageUrl: 'b',
     });
   });
+
+  it('should filter products on categoryId', async () => {
+    const otherCategoryName = `${category.name}0`;
+    const otherCategory: Category = await insertCategory(otherCategoryName);
+    await insertProduct(category.id);
+    await insertProduct(otherCategory.id);
+    let response: Response = await request.get(productsEndPoint);
+    expect(response.status).toBe(200);
+    expect(response.type).toContain('json');
+    expect(response.body.length > 0).toBeTruthy();
+    let categoryIds: number[] = response.body.map((p: Product) => p.categoryId);
+    expect(categoryIds).toContain(category.id);
+    expect(categoryIds).toContain(otherCategory.id);
+
+    response = await request.get(`${productsEndPoint}?categoryId=${otherCategory.id}`);
+    expect(response.status).toBe(200);
+    expect(response.type).toContain('json');
+    expect(response.body.length > 0).toBeTruthy();
+    categoryIds = response.body.map((p: Product) => p.categoryId);
+    expect(categoryIds).not.toContain(category.id);
+    expect(categoryIds).toContain(otherCategory.id);
+  });
 });
 
 describe('GET /api/v1/products/:id', () => {

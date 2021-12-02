@@ -13,15 +13,14 @@ const productStore = new ProductStore();
 const INVALID_PRODUCT_ID = 'The product id is not a valid number';
 const PRODUCT_NOT_FOUND = 'The product with the given id was not found';
 
-router.get('/', async (_req: Request, res: Response) => {
-  let products: Product[];
+router.get('/', async (req: Request, res: Response) => {
   try {
-    products = await productStore.index();
+    const { categoryId }: { categoryId?: number } = req.query;
+    const products: Product[] = await productStore.index({ categoryId });
+    return res.send(products);
   } catch (_error) {
     return res.status(500).send(new Internal500Error('Could not get the products'));
   }
-
-  return res.send(products);
 });
 
 router.get('/:id', async (req: Request, res: Response) => {
