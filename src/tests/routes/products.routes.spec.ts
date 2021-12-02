@@ -4,6 +4,7 @@ import DatabaseService from '../../services/database.service';
 import { User } from '../../models/user';
 import { getJWTToken } from '../../services/security.service';
 import { Product } from '../../models/product';
+import { Category } from '../../models/category';
 
 const request: SuperTest<Test> = supertest(app);
 const productsEndPoint = '/api/v1/products';
@@ -13,10 +14,23 @@ const deleteAllProducts = async (): Promise<void> => {
   await DatabaseService.runQuery<Product>(query);
 };
 
-const insertProduct = async (): Promise<Product> => {
-  const query =
-    'INSERT INTO products (name, price, category) VALUES ($1, $2, $3) RETURNING id, name, price, category;';
-  const products: Product[] = await DatabaseService.runQuery<Product>(query, ['a', 1, 'b']);
+const deleteAllCategories = async (): Promise<void> => {
+  const query = 'DELETE FROM categories;';
+  await DatabaseService.runQuery<Product>(query);
+};
+
+const insertCategory = async (name = 'c'): Promise<Category> => {
+  const query = 'INSERT INTO categories (name) VALUES ($1) RETURNING id, name;';
+  const categories: Category[] = await DatabaseService.runQuery<Category>(query, [name]);
+  return categories[0];
+};
+
+const insertProduct = async (categoryId: number): Promise<Product> => {
+  const query = `INSERT INTO products (name, price, category_id, image_url)
+    VALUES ($1, $2, $3, $4)
+    RETURNING id, name, price, category_id AS "categoryId", image_url AS "imageUrl";`;
+  const values: (string | number)[] = ['a', 1, categoryId, 'b'];
+  const products: Product[] = await DatabaseService.runQuery<Product>(query, values);
   return products[0];
 };
 
@@ -27,6 +41,14 @@ const maxProductId = async (): Promise<number> => {
 };
 
 describe('GET /api/v1/products', () => {
+  let category: Category;
+
+  beforeAll(async () => {
+    await deleteAllProducts();
+    await deleteAllCategories();
+    category = await insertCategory();
+  });
+
   beforeEach(async () => {
     await deleteAllProducts();
   });
@@ -47,18 +69,31 @@ describe('GET /api/v1/products', () => {
   });
 
   it('should respond a list of Product when the table has values', async () => {
-    await insertProduct();
+    await insertProduct(category.id);
     const response: Response = await request.get(productsEndPoint);
     const { status, type, body } = response;
     expect(status).toBe(200);
     expect(type).toContain('json');
     expect(body.length > 0).toBeTruthy();
-    expect(body).toContain({ id: jasmine.any(Number), name: 'a', price: 1, category: 'b' });
+    expect(body).toContain({
+      id: jasmine.any(Number),
+      name: 'a',
+      price: 1,
+      categoryId: category.id,
+      imageUrl: 'b',
+    });
   });
 });
 
 describe('GET /api/v1/products/:id', () => {
   let maxId: number;
+  let category: Category;
+
+  beforeAll(async () => {
+    await deleteAllProducts();
+    await deleteAllCategories();
+    category = await insertCategory();
+  });
 
   beforeEach(async () => {
     await deleteAllProducts();
@@ -83,23 +118,33 @@ describe('GET /api/v1/products/:id', () => {
 
   it('should respond the Product details when it exists', async () => {
     const productId = maxId + 1;
-    await insertProduct();
+    await insertProduct(category.id);
     const response: Response = await request.get(`${productsEndPoint}/${productId}`);
     const { status, type, body } = response;
     expect(status).toBe(200);
     expect(type).toContain('json');
-    expect(body).toEqual({ id: productId, name: 'a', price: 1, category: 'b' });
+    expect(body).toEqual({
+      id: productId,
+      name: 'a',
+      price: 1,
+      categoryId: category.id,
+      imageUrl: 'b',
+    });
   });
 });
 
 describe('POST /api/v1/products', () => {
-  let product: { name: unknown; price: unknown; category: unknown };
+  let product: { name: unknown; price: unknown; categoryId: unknown; imageUrl: unknown };
   const nonAdminUser: User = { id: 0, email: '', firstName: '', lastName: '', isAdmin: false };
   const admin: User = { ...nonAdminUser, isAdmin: true };
   let nonAdminToken: string;
   let token: string;
+  let category: Category;
 
   beforeAll(async () => {
+    await deleteAllProducts();
+    await deleteAllCategories();
+    category = await insertCategory();
     nonAdminToken = getJWTToken(nonAdminUser);
     token = getJWTToken(admin);
   });
@@ -107,7 +152,7 @@ describe('POST /api/v1/products', () => {
   describe('For non admin users', () => {
     beforeEach(async () => {
       await deleteAllProducts();
-      product = { name: 'a', price: 1, category: 'b' };
+      product = { name: 'a', price: 1, categoryId: category.id, imageUrl: 'b' };
     });
 
     it('should respond a 412 error for non authenticated requests without token', async () => {
@@ -144,7 +189,7 @@ describe('POST /api/v1/products', () => {
     describe('Data validation', () => {
       beforeEach(async () => {
         await deleteAllProducts();
-        product = { name: 'a', price: 1, category: 'b' };
+        product = { name: 'a', price: 1, categoryId: category.id, imageUrl: 'b' };
       });
 
       it('should respond 400 error if the name property is missing', async () => {
@@ -216,8 +261,28 @@ describe('POST /api/v1/products', () => {
         expect(response.body.message).toMatch(/price.+must be a positive number/);
       });
 
-      it('should allow category to be missing', async () => {
-        product.category = undefined;
+      it('should respond 400 error if the categoryId property is missing', async () => {
+        product.categoryId = undefined;
+        let response: Response = await request
+          .post(productsEndPoint)
+          .set('Authorization', `Bearer ${token}`)
+          .send(product);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('json');
+        expect(response.body.message).toMatch(/categoryId.+required/);
+
+        product.categoryId = null;
+        response = await request
+          .post(productsEndPoint)
+          .set('Authorization', `Bearer ${token}`)
+          .send(product);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('json');
+        expect(response.body.message).toMatch(/categoryId.+must be a number/);
+      });
+
+      it('should allow imageUrl to be missing', async () => {
+        product.imageUrl = undefined;
         let response: Response = await request
           .post(productsEndPoint)
           .set('Authorization', `Bearer ${token}`)
@@ -225,7 +290,7 @@ describe('POST /api/v1/products', () => {
         expect(response.status).toBe(201);
         expect(response.type).toContain('json');
 
-        product.category = null;
+        product.imageUrl = null;
         response = await request
           .post(productsEndPoint)
           .set('Authorization', `Bearer ${token}`)
@@ -234,8 +299,8 @@ describe('POST /api/v1/products', () => {
         expect(response.type).toContain('json');
       });
 
-      it('should return a 400 error if the category is an empty string', async () => {
-        product.category = '';
+      it('should return a 400 error if the imageUrl is an empty string', async () => {
+        product.imageUrl = '';
         const response: Response = await request
           .post(productsEndPoint)
           .set('Authorization', `Bearer ${token}`)
@@ -243,14 +308,14 @@ describe('POST /api/v1/products', () => {
         const { status, type, body } = response;
         expect(status).toBe(400);
         expect(type).toContain('json');
-        expect(body.message).toMatch(/category.+not allowed to be empty/i);
+        expect(body.message).toMatch(/imageUrl.+not allowed to be empty/i);
       });
     });
 
     describe('Happy path for admins', () => {
       beforeEach(async () => {
         await deleteAllProducts();
-        product = { name: 'a', price: 1, category: 'b' };
+        product = { name: 'a', price: 1, categoryId: category.id, imageUrl: 'b' };
       });
 
       it('should add the product', async () => {
@@ -261,20 +326,30 @@ describe('POST /api/v1/products', () => {
         const { status, type, body } = response;
         expect(status).toBe(201);
         expect(type).toContain('json');
-        expect(body).toEqual({ id: jasmine.any(Number), name: 'a', price: 1, category: 'b' });
+        expect(body).toEqual({
+          id: jasmine.any(Number),
+          name: 'a',
+          price: 1,
+          categoryId: category.id,
+          imageUrl: 'b',
+        });
       });
     });
   });
 });
 
 describe('PUT /api/v1/products/:id', () => {
-  let product: { name: unknown; price: unknown; category: unknown };
+  let product: { name: unknown; price: unknown; categoryId: unknown; imageUrl: unknown };
   const nonAdminUser: User = { id: 0, email: '', firstName: '', lastName: '', isAdmin: false };
   const admin: User = { ...nonAdminUser, isAdmin: true };
   let nonAdminToken: string;
   let token: string;
+  let category: Category;
 
   beforeAll(async () => {
+    await deleteAllProducts();
+    await deleteAllCategories();
+    category = await insertCategory();
     nonAdminToken = getJWTToken(nonAdminUser);
     token = getJWTToken(admin);
   });
@@ -282,7 +357,7 @@ describe('PUT /api/v1/products/:id', () => {
   describe('For non admin users', () => {
     beforeEach(async () => {
       await deleteAllProducts();
-      product = { name: 'a', price: 1, category: 'b' };
+      product = { name: 'a', price: 1, categoryId: category.id, imageUrl: 'b' };
     });
 
     it('should respond a 412 error for non authenticated requests without token', async () => {
@@ -305,7 +380,7 @@ describe('PUT /api/v1/products/:id', () => {
     });
 
     it('should respond a 200 for admins', async () => {
-      const lastProduct: Product = await insertProduct();
+      const lastProduct: Product = await insertProduct(category.id);
       const response: Response = await request
         .put(`${productsEndPoint}/${lastProduct.id}`)
         .set('Authorization', `Bearer ${token}`)
@@ -323,8 +398,8 @@ describe('PUT /api/v1/products/:id', () => {
     describe('Data validation', () => {
       beforeEach(async () => {
         await deleteAllProducts();
-        product = { name: 'a', price: 1, category: 'b' };
-        lastProduct = await insertProduct();
+        product = { name: 'a', price: 1, categoryId: category.id, imageUrl: 'b' };
+        lastProduct = await insertProduct(category.id);
         id = lastProduct.id;
       });
 
@@ -389,6 +464,26 @@ describe('PUT /api/v1/products/:id', () => {
         expect(response.body.message).toMatch(/price.+must be a number/i);
       });
 
+      it('should respond a 400 error when categoryId is missing', async () => {
+        product.categoryId = undefined;
+        let response: Response = await request
+          .put(`${productsEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(product);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('json');
+        expect(response.body.message).toMatch(/categoryId.+required/i);
+
+        product.categoryId = null;
+        response = await request
+          .put(`${productsEndPoint}/${id}`)
+          .set('Authorization', `Bearer ${token}`)
+          .send(product);
+        expect(response.status).toBe(400);
+        expect(response.type).toContain('json');
+        expect(response.body.message).toMatch(/categoryId.+must be a number/i);
+      });
+
       it('should respond a 400 error when price is not a strict positive number', async () => {
         product.price = 0;
         let response: Response = await request
@@ -413,15 +508,17 @@ describe('PUT /api/v1/products/:id', () => {
     describe('Happy path', () => {
       beforeEach(async () => {
         await deleteAllProducts();
-        product = { name: 'a', price: 1, category: 'b' };
-        lastProduct = await insertProduct();
+        product = { name: 'a', price: 1, categoryId: category.id, imageUrl: 'b' };
+        lastProduct = await insertProduct(category.id);
         id = lastProduct.id;
       });
 
-      it('should update the name, price and category for the product given product id', async () => {
+      it('should update the name, price and categoryId and imageUrl for the given product id', async () => {
+        const newCategory: Category = await insertCategory(`${category.name}0`);
         product.name = 'a0';
         product.price = 10;
-        product.category = 'b0';
+        product.imageUrl = 'b0';
+        product.categoryId = newCategory.id;
 
         const response: Response = await request
           .put(`${productsEndPoint}/${id}`)
@@ -430,30 +527,40 @@ describe('PUT /api/v1/products/:id', () => {
         const { status, type, body } = response;
         expect(status).toBe(200);
         expect(type).toContain('json');
-        expect(body).toEqual({ id, name: 'a0', price: 10, category: 'b0' });
+        expect(body).toEqual({
+          id,
+          name: 'a0',
+          price: 10,
+          categoryId: newCategory.id,
+          imageUrl: 'b0',
+        });
       });
     });
   });
 });
 
 describe('DELETE /api/v1/products/:id', () => {
-  let product: { name: unknown; price: unknown; category: unknown };
+  let product: { name: unknown; price: unknown; categoryId: unknown; imageUrl: unknown };
   const nonAdminUser: User = { id: 0, email: '', firstName: '', lastName: '', isAdmin: false };
   const admin: User = { ...nonAdminUser, isAdmin: true };
   let nonAdminToken: string;
   let token: string;
   let lastProduct: Product;
   let id: number;
+  let category: Category;
 
   beforeAll(async () => {
+    await deleteAllProducts();
+    await deleteAllCategories();
+    category = await insertCategory();
     nonAdminToken = getJWTToken(nonAdminUser);
     token = getJWTToken(admin);
   });
 
   beforeEach(async () => {
     await deleteAllProducts();
-    product = { name: 'a', price: 1, category: 'b' };
-    lastProduct = await insertProduct();
+    product = { name: 'a', price: 1, categoryId: category.id, imageUrl: 'b' };
+    lastProduct = await insertProduct(category.id);
     id = lastProduct.id;
   });
 
@@ -501,7 +608,13 @@ describe('DELETE /api/v1/products/:id', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     expect(response.type).toContain('json');
-    expect(response.body).toEqual({ id, name: 'a', price: 1, category: 'b' });
+    expect(response.body).toEqual({
+      id,
+      name: 'a',
+      price: 1,
+      categoryId: category.id,
+      imageUrl: 'b',
+    });
 
     const responseAfterDelete: Response = await request
       .get(`${productsEndPoint}`)

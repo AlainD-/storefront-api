@@ -9,13 +9,14 @@ import { ProductStore, validate } from '../models/product.store';
 import { isANumber, queryToNumber } from '../services/common-validation.service';
 
 const router: Router = express.Router();
+const productStore = new ProductStore();
 const INVALID_PRODUCT_ID = 'The product id is not a valid number';
 const PRODUCT_NOT_FOUND = 'The product with the given id was not found';
 
 router.get('/', async (_req: Request, res: Response) => {
   let products: Product[];
   try {
-    products = await ProductStore.index();
+    products = await productStore.index();
   } catch (_error) {
     return res.status(500).send(new Internal500Error('Could not get the products'));
   }
@@ -30,7 +31,7 @@ router.get('/:id', async (req: Request, res: Response) => {
   }
 
   const id: number = queryToNumber(qId);
-  const product: Product | undefined = await ProductStore.show(id);
+  const product: Product | undefined = await productStore.show(id);
 
   if (!product) {
     return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
@@ -46,8 +47,13 @@ router.post('/', checkIsAdmin, async (req: Request, res: Response) => {
   }
 
   try {
-    const { name, price, category } = req.body as ProductInput;
-    const product: Product | undefined = await ProductStore.create({ name, price, category });
+    const { name, price, categoryId, imageUrl } = req.body as ProductInput;
+    const product: Product | undefined = await productStore.create({
+      name,
+      price,
+      categoryId,
+      imageUrl,
+    });
 
     if (!product) {
       return res
@@ -82,17 +88,18 @@ router.put('/:id', checkIsAdmin, async (req: Request, res: Response) => {
   }
 
   const id: number = queryToNumber(qId);
-  const { name, price, category } = req.body;
-  const product: Product | undefined = await ProductStore.show(id);
+  const { name, price, categoryId, imageUrl } = req.body as Product;
+  const product: Product | undefined = await productStore.show(id);
 
   if (!product) {
     return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
   }
 
-  const updatedProduct: Product | undefined = await ProductStore.update(id, {
+  const updatedProduct: Product | undefined = await productStore.update(id, {
     name,
     price,
-    category,
+    categoryId,
+    imageUrl,
   });
 
   return res.send(updatedProduct);
@@ -105,13 +112,13 @@ router.delete('/:id', checkIsAdmin, async (req: Request, res: Response) => {
   }
 
   const id: number = queryToNumber(qId);
-  const product: Product | undefined = await ProductStore.show(id);
+  const product: Product | undefined = await productStore.show(id);
 
   if (!product) {
     return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
   }
 
-  const deletedProduct: Product | undefined = await ProductStore.delete(id);
+  const deletedProduct: Product | undefined = await productStore.delete(id);
 
   return res.send(deletedProduct);
 });

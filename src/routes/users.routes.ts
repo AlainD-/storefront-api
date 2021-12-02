@@ -21,6 +21,7 @@ import { UserStore, validateUser, validateUserInput } from '../models/user.store
 import { isANumber, queryToNumber } from '../services/common-validation.service';
 
 const router: Router = express.Router();
+const productStore = new ProductStore();
 const INVALID_USER_ID = 'The user id is not a valid number';
 const INVALID_ORDER_ID = 'The order id is not a valid number';
 const INVALID_ORDER_ITEM_ID = 'The order item id is not a valid number';
@@ -306,7 +307,7 @@ router.post(
     }
 
     const { productId, quantity } = req.body as { productId: number; quantity: number };
-    const product: Product | undefined = await ProductStore.show(productId);
+    const product: Product | undefined = await productStore.show(productId);
     if (!product) {
       return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
     }
@@ -368,7 +369,7 @@ router.put(
     if (+qId !== id) {
       return res.status(400).send(new BadRequest400Error('Mismatched order item ids'));
     }
-    const product: Product | undefined = await ProductStore.show(productId);
+    const product: Product | undefined = await productStore.show(productId);
     if (!product) {
       return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
     }
