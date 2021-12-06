@@ -201,28 +201,51 @@ Admin users have to be set directly in the database by setting the column `is_ad
 }
 ```
 
+### Route guards
+
+* `admin`: the route API is authorized to an admin user
+* `currentUser`: the route is authorized to the current user only.
+
 ### Complete list
 
 * `admin` GET /users
+  * Response: a list of `User` objects
 * POST /users (registration)
+  * Response: a `User` object
   * Manual modification in the DB for is_admin users
-* `admin`, `authed` GET /users/:id
-* `authed` PUT /users/:id
+* `admin` GET /users/:id
+  * Response: a `User` object
+* `currentUser` PUT /users/:id
+  * Response: a `User` object
 * `admin` DELETE /users/:id
+  * Response: a `User` object
 * POST /authenticate (login)
+  * Response: a JSON object with 2 properties "token" which has the authentication JWT token as a value, and "user" which has the `User` object as a value
 * GET /products
 * `admin` POST /products
+  * Response: a list of `Product` objects
 * GET /products/:id
+  * Response: a `Product` object
 * `admin` PUT /products/:id
+  * Response: a `Product` object
 * `admin` DELETE /products/:id
+  * Response: a `Product` object
 * `admin` GET /orders
-* `authed` GET /users/:userId/orders
-* `authed` POST /users/:userId/orders
-* `authed` GET /users/:userId/orders/:orderId
-* `authed` PUT /users/:userId/orders/:orderId
-* `authed` POST /users/:userId/orders/:orderId/products
-* `authed` PUT /users/:userId/orders/:orderId/products/:productId
-* `authed` DELETE /users/:userId/orders/:orderId/products/:productId
+  * Response: a list of `Order` objects
+* `currentUser` GET /users/:userId/orders
+  * Response: a list of `Order` objects
+* `currentUser` POST /users/:userId/orders
+  * Response: a `Order` object
+* `currentUser` GET /users/:userId/orders/:orderId
+  * Response: a `Order` object
+* `currentUser` PUT /users/:userId/orders/:orderId
+  * Response: a `Order` object
+* `currentUser` POST /users/:userId/orders/:orderId/items
+  * Response: a `OrderItem` object
+* `currentUser` PUT /users/:userId/orders/:orderId/items/:itemId
+  * Response: a `OrderItem` object
+* `currentUser` DELETE /users/:userId/orders/:orderId/items/:itemId
+  * Response: a `OrderItem` object
 
 ## Authors
 
