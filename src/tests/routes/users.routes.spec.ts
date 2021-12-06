@@ -1,29 +1,27 @@
 import supertest, { Response, SuperTest, Test } from 'supertest';
 import app from '../../app';
-import DatabaseService from '../../services/database.service';
+import { Category } from '../../models/category';
+import { Order } from '../../models/order';
+import { OrderItem } from '../../models/order-item';
+import { Product } from '../../models/product';
 import { User } from '../../models/user';
 import { getJWTToken } from '../../services/security.service';
+import {
+  deleteAllCategories,
+  deleteAllOrderItems,
+  deleteAllOrders,
+  deleteAllProducts,
+  deleteAllUsers,
+  insertCategory,
+  insertOrder,
+  insertOrderItem,
+  insertProduct,
+  insertUser,
+  maxUserId,
+} from '../helpers/db-init';
 
 const request: SuperTest<Test> = supertest(app);
 const usersEndPoint = '/api/v1/users';
-
-const deleteAllUsers = async (): Promise<void> => {
-  const query = 'DELETE FROM users;';
-  await DatabaseService.runQuery<User>(query);
-};
-
-const insertUser = async (): Promise<User> => {
-  const query =
-    'INSERT INTO users (first_name, last_name, password, email) VALUES ($1, $2, $3, $4) RETURNING id, email, first_name AS "firstName", last_name AS "lastName", is_admin AS "isAdmin";';
-  const users: User[] = await DatabaseService.runQuery<User>(query, ['a', 'b', 'c', 'd@d.d']);
-  return users[0];
-};
-
-const maxUserId = async (): Promise<number> => {
-  const query = `SELECT NEXTVAL(pg_get_serial_sequence('users', 'id')) AS "maxId";`;
-  const ids: { maxId: string }[] = await DatabaseService.runQuery<{ maxId: string }>(query);
-  return parseInt(ids[0]?.maxId, 10);
-};
 
 describe('GET /api/v1/users', () => {
   const user: User = { id: 0, email: '', firstName: '', lastName: '', isAdmin: false };
@@ -878,5 +876,618 @@ describe('DELETE /api/v1/users/:id', () => {
     expect(response.status).toBe(404);
     expect(response.type).toContain('json');
     expect(response.body.message).toMatch(/not found/i);
+  });
+});
+
+describe('GET /api/v1/users/:userId/orders', () => {
+  let user: User;
+  let otherUser: User;
+  let userId: number;
+  let token: string;
+
+  beforeAll(async () => {
+    await deleteAllUsers();
+    user = await insertUser();
+    otherUser = await insertUser(`${user.email}0`);
+    userId = user.id;
+    token = getJWTToken(user);
+    await deleteAllOrders();
+  });
+
+  beforeEach(async () => {
+    await deleteAllOrders();
+  });
+
+  it('should return a 403 error when the user is not the authenticated user', async () => {
+    const response: Response = await request
+      .get(`${usersEndPoint}/${otherUser.id}/orders`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not authorized/i);
+  });
+
+  it('should return the list of orders of the user', async () => {
+    let response: Response = await request
+      .get(`${usersEndPoint}/${userId}/orders`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(response.status).toBe(200);
+    expect(response.type).toContain('json');
+    expect(response.body.length).toBe(0);
+
+    const order: Order = await insertOrder(userId);
+    response = await request
+      .get(`${usersEndPoint}/${userId}/orders`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(response.status).toBe(200);
+    expect(response.type).toContain('json');
+    expect(response.body.length).toBe(1);
+    expect(response.body).toContain(order);
+
+    const otherOrder: Order = await insertOrder(otherUser.id);
+    response = await request
+      .get(`${usersEndPoint}/${userId}/orders`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(response.status).toBe(200);
+    expect(response.type).toContain('json');
+    expect(response.body.length).toBe(1);
+    expect(response.body).not.toContain(otherOrder);
+  });
+
+  it('should return the list of active orders of the user', async () => {
+    const activeOrder: Order = await insertOrder(userId);
+    const completeOrder: Order = await insertOrder(userId, 'complete');
+    const response: Response = await request
+      .get(`${usersEndPoint}/${userId}/orders?status=active`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(200);
+    expect(type).toContain('json');
+    expect(body.length).toBe(1);
+    expect(body).not.toContain(completeOrder);
+    expect(body).toContain(activeOrder);
+  });
+
+  it('should return the list of completed orders of the user', async () => {
+    const activeOrder: Order = await insertOrder(userId);
+    const completeOrder: Order = await insertOrder(userId, 'complete');
+    const response: Response = await request
+      .get(`${usersEndPoint}/${userId}/orders?status=complete`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(200);
+    expect(type).toContain('json');
+    expect(body.length).toBe(1);
+    expect(body).not.toContain(activeOrder);
+    expect(body).toContain(completeOrder);
+  });
+});
+
+describe('POST /api/v1/users/:userId/orders', () => {
+  let user: User;
+  let otherUser: User;
+  let userId: number;
+  let token: string;
+
+  beforeAll(async () => {
+    await deleteAllOrders();
+    await deleteAllUsers();
+    user = await insertUser();
+    otherUser = await insertUser(`${user.email}0`);
+    userId = user.id;
+    token = getJWTToken(user);
+  });
+
+  beforeEach(async () => {
+    await deleteAllOrders();
+  });
+
+  it('should return a 403 error when the user is not the authenticated user', async () => {
+    const response: Response = await request
+      .post(`${usersEndPoint}/${otherUser.id}/orders`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not authorized/i);
+  });
+
+  it('should return a 400 error when an active order already exist', async () => {
+    await insertOrder(userId, 'active');
+    const response: Response = await request
+      .post(`${usersEndPoint}/${userId}/orders`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ userId });
+    const { status, type, body } = response;
+    expect(status).toBe(400);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/active order already exists/i);
+  });
+
+  it('should create an active order', async () => {
+    const response: Response = await request
+      .post(`${usersEndPoint}/${userId}/orders`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ userId });
+    const { status, type, body } = response;
+    expect(status).toBe(201);
+    expect(type).toContain('json');
+    expect(body).toEqual({ id: jasmine.any(Number), userId, status: 'active' });
+  });
+});
+
+describe('GET /api/v1/users/:userId/orders/:orderId', () => {
+  let user: User;
+  let otherUser: User;
+  let userId: number;
+  let token: string;
+  let order: Order;
+
+  beforeAll(async () => {
+    await deleteAllOrders();
+    await deleteAllUsers();
+    user = await insertUser();
+    otherUser = await insertUser(`${user.email}0`);
+    userId = user.id;
+    token = getJWTToken(user);
+  });
+
+  beforeEach(async () => {
+    await deleteAllOrders();
+    order = await insertOrder(userId);
+  });
+
+  it('should return a 403 error when the user is not the authenticated user', async () => {
+    const response: Response = await request
+      .get(`${usersEndPoint}/${otherUser.id}/orders/${order.id}`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not authorized/i);
+  });
+
+  it('should return a 404 error when the order does not exist', async () => {
+    const inexistentId: number = order.id + 1;
+    const response: Response = await request
+      .get(`${usersEndPoint}/${userId}/orders/${inexistentId}`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(404);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not found/i);
+  });
+
+  it('should return the given order with items empty', async () => {
+    const response: Response = await request
+      .get(`${usersEndPoint}/${userId}/orders/${order.id}`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(200);
+    expect(type).toContain('json');
+    expect(body).toEqual({ id: order.id, userId, status: 'active', items: [] });
+  });
+});
+
+describe('PUT /api/v1/users/:userId/orders/:orderId', () => {
+  let user: User;
+  let otherUser: User;
+  let userId: number;
+  let token: string;
+  let order: Order;
+
+  beforeAll(async () => {
+    await deleteAllOrders();
+    await deleteAllUsers();
+    user = await insertUser();
+    otherUser = await insertUser(`${user.email}0`);
+    userId = user.id;
+    token = getJWTToken(user);
+  });
+
+  beforeEach(async () => {
+    await deleteAllOrders();
+    order = await insertOrder(userId);
+  });
+
+  it('should return a 403 error when the user is not the authenticated user', async () => {
+    const response: Response = await request
+      .put(`${usersEndPoint}/${otherUser.id}/orders/${order.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not authorized/i);
+  });
+
+  it('should return a 404 error when the order does not exist', async () => {
+    const inexistentId: number = order.id + 1;
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${inexistentId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: inexistentId, userId, status: 'complete' });
+    const { status, type, body } = response;
+    expect(status).toBe(404);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not found/i);
+  });
+
+  it('should return a 400 error if the status is missing', async () => {
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${order.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ userId });
+    const { status, type, body } = response;
+    expect(status).toBe(400);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/status.+required/i);
+  });
+
+  it('should return a 403 error if the order is already complete', async () => {
+    const completeOrder: Order = await insertOrder(userId, 'complete');
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${completeOrder.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: completeOrder.id, userId, status: 'active' });
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/order that is not active is not allowed/i);
+  });
+
+  it('should update the status to "complete" for the active order', async () => {
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${order.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: order.id, userId, status: 'complete' });
+    const { status, type, body } = response;
+    expect(status).toBe(200);
+    expect(type).toContain('json');
+    expect(body).toEqual({ id: order.id, userId, status: 'complete' });
+  });
+});
+
+describe('POST /api/v1/users/:userId/orders/:orderId/items', () => {
+  let user: User;
+  let otherUser: User;
+  let userId: number;
+  let token: string;
+  let order: Order;
+  let product: Product;
+
+  beforeAll(async () => {
+    await deleteAllOrderItems();
+    await deleteAllOrders();
+    await deleteAllProducts();
+    await deleteAllCategories();
+    await deleteAllUsers();
+    user = await insertUser();
+    otherUser = await insertUser(`${user.email}0`);
+    userId = user.id;
+    token = getJWTToken(user);
+    const category: Category = await insertCategory();
+    product = await insertProduct(category.id);
+    order = await insertOrder(userId);
+  });
+
+  beforeEach(async () => {
+    await deleteAllOrderItems();
+  });
+
+  it('should return a 403 error when the user is not the authenticated user', async () => {
+    const response: Response = await request
+      .post(`${usersEndPoint}/${otherUser.id}/orders/${order.id}/items`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not authorized/i);
+  });
+
+  it('should return a 404 error when the order does not exist', async () => {
+    const inexistentId: number = order.id + 1;
+    const response: Response = await request
+      .post(`${usersEndPoint}/${userId}/orders/${inexistentId}/items`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ productId: 0, quantity: 0 });
+    const { status, type, body } = response;
+    expect(status).toBe(404);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not found/i);
+  });
+
+  it('should return a 403 error when the order is already complete', async () => {
+    const completeOrder: Order = await insertOrder(userId, 'complete');
+    const response: Response = await request
+      .post(`${usersEndPoint}/${userId}/orders/${completeOrder.id}/items`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ productId: 0, quantity: 0 });
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/order that is not active is not allowed/i);
+  });
+
+  it('should return a 400 error when the productId is missing', async () => {
+    const response: Response = await request
+      .post(`${usersEndPoint}/${userId}/orders/${order.id}/items`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ quantity: 0 });
+    const { status, type, body } = response;
+    expect(status).toBe(400);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/productId.+required/i);
+  });
+
+  it('should return a 400 error when the quantity is missing', async () => {
+    const response: Response = await request
+      .post(`${usersEndPoint}/${userId}/orders/${order.id}/items`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ productId: 0 });
+    const { status, type, body } = response;
+    expect(status).toBe(400);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/quantity.+required/i);
+  });
+
+  it('should return a 500 error when the productId is already in the order', async () => {
+    await insertOrderItem({ orderId: order.id, productId: product.id });
+    const response: Response = await request
+      .post(`${usersEndPoint}/${userId}/orders/${order.id}/items`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ productId: product.id, quantity: 0 });
+    const { status, type, body } = response;
+    expect(status).toBe(500);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/unexpected error/i);
+  });
+
+  it('should add the product in the order', async () => {
+    const response: Response = await request
+      .post(`${usersEndPoint}/${userId}/orders/${order.id}/items`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ productId: product.id, quantity: 0 });
+    const { status, type, body } = response;
+    expect(status).toBe(201);
+    expect(type).toContain('json');
+    expect(body).toEqual({
+      id: jasmine.any(Number),
+      productId: product.id,
+      orderId: order.id,
+      quantity: 0,
+    });
+  });
+});
+
+describe('PUT /api/v1/users/:userId/orders/:orderId/items/:itemId', () => {
+  let user: User;
+  let otherUser: User;
+  let userId: number;
+  let token: string;
+  let order: Order;
+  let product: Product;
+  let orderItem: OrderItem;
+
+  beforeAll(async () => {
+    await deleteAllOrderItems();
+    await deleteAllOrders();
+    await deleteAllProducts();
+    await deleteAllCategories();
+    await deleteAllUsers();
+    user = await insertUser();
+    otherUser = await insertUser(`${user.email}0`);
+    userId = user.id;
+    token = getJWTToken(user);
+    const category: Category = await insertCategory();
+    product = await insertProduct(category.id);
+    order = await insertOrder(userId);
+  });
+
+  beforeEach(async () => {
+    await deleteAllOrderItems();
+    orderItem = await insertOrderItem({ orderId: order.id, productId: product.id, quantity: 1 });
+  });
+
+  it('should return a 403 error when the user is not the authenticated user', async () => {
+    const response: Response = await request
+      .put(`${usersEndPoint}/${otherUser.id}/orders/${order.id}/items/0`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not authorized/i);
+  });
+
+  it('should return a 404 error when the order does not exist', async () => {
+    const inexistentOrderId: number = order.id + 1;
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${inexistentOrderId}/items/0`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 0, orderId: inexistentOrderId, productId: 0, quantity: 0 });
+    const { status, type, body } = response;
+    expect(status).toBe(404);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not found/i);
+  });
+
+  it('should return a 404 error when the order item does not exist', async () => {
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${order.id}/items/0`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: 0, orderId: order.id, productId: 0, quantity: 0 });
+    const { status, type, body } = response;
+    expect(status).toBe(404);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not found/i);
+  });
+
+  it('should return a 403 error when the order is already complete', async () => {
+    const completeOrder: Order = await insertOrder(user.id, 'complete');
+    const purchasedOrderItem: OrderItem = await insertOrderItem({
+      orderId: completeOrder.id,
+      productId: product.id,
+    });
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${completeOrder.id}/items/${purchasedOrderItem.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        id: purchasedOrderItem.id,
+        orderId: completeOrder.id,
+        productId: product.id,
+        quantity: 1,
+      });
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/order that is not active is not allowed/i);
+  });
+
+  it('should return a 400 error when the productId is missing', async () => {
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${order.id}/items/${orderItem.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: orderItem.id, orderId: order.id, quantity: 1 });
+    const { status, type, body } = response;
+    expect(status).toBe(400);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/productId.+required/i);
+  });
+
+  it('should return a 400 error when the quantity is missing', async () => {
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${order.id}/items/${orderItem.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: orderItem.id, orderId: order.id, productId: product.id });
+    const { status, type, body } = response;
+    expect(status).toBe(400);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/quantity.+required/i);
+  });
+
+  it('should return a 400 error when the productId is not in the order yet', async () => {
+    const category: Category = await insertCategory('a');
+    const anotherProduct: Product = await insertProduct(category.id);
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${order.id}/items/${orderItem.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: orderItem.id, orderId: order.id, productId: anotherProduct.id, quantity: 1 });
+    const { status, type, body } = response;
+    expect(status).toBe(400);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/Mismatched product ids/i);
+  });
+
+  it('should update the product quantity in the order', async () => {
+    const response: Response = await request
+      .put(`${usersEndPoint}/${userId}/orders/${order.id}/items/${orderItem.id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ id: orderItem.id, orderId: order.id, productId: product.id, quantity: 10 });
+    const { status, type, body } = response;
+    expect(status).toBe(200);
+    expect(type).toContain('json');
+    expect(body).toEqual({
+      id: orderItem.id,
+      orderId: order.id,
+      productId: product.id,
+      quantity: 10,
+    });
+  });
+});
+
+describe('DELETE /api/v1/users/:userId/orders/:orderId/items/:itemId', () => {
+  let user: User;
+  let otherUser: User;
+  let userId: number;
+  let token: string;
+  let order: Order;
+  let product: Product;
+  let orderItem: OrderItem;
+
+  beforeAll(async () => {
+    await deleteAllOrderItems();
+    await deleteAllOrders();
+    await deleteAllProducts();
+    await deleteAllCategories();
+    await deleteAllUsers();
+    user = await insertUser();
+    otherUser = await insertUser(`${user.email}0`);
+    userId = user.id;
+    token = getJWTToken(user);
+    const category: Category = await insertCategory();
+    product = await insertProduct(category.id);
+    order = await insertOrder(userId);
+  });
+
+  beforeEach(async () => {
+    await deleteAllOrderItems();
+    orderItem = await insertOrderItem({ orderId: order.id, productId: product.id, quantity: 1 });
+  });
+
+  it('should return a 403 error when the user is not the authenticated user', async () => {
+    const response: Response = await request
+      .delete(`${usersEndPoint}/${otherUser.id}/orders/${order.id}/items/0`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not authorized/i);
+  });
+
+  it('should return a 404 error when the order does not exist', async () => {
+    const inexistentOrderId: number = order.id + 1;
+    const response: Response = await request
+      .delete(`${usersEndPoint}/${userId}/orders/${inexistentOrderId}/items/0`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(404);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not found/i);
+  });
+
+  it('should return a 404 error when the order item does not exist', async () => {
+    const response: Response = await request
+      .delete(`${usersEndPoint}/${userId}/orders/${order.id}/items/0`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(404);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/not found/i);
+  });
+
+  it('should return a 403 error when the order is already complete', async () => {
+    const completeOrder: Order = await insertOrder(user.id, 'complete');
+    const purchasedOrderItem: OrderItem = await insertOrderItem({
+      orderId: completeOrder.id,
+      productId: product.id,
+    });
+    const response: Response = await request
+      .delete(
+        `${usersEndPoint}/${userId}/orders/${completeOrder.id}/items/${purchasedOrderItem.id}`
+      )
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(403);
+    expect(type).toContain('json');
+    expect(body.message).toMatch(/order that is not active is not allowed/i);
+  });
+
+  it('should remove the product from the order', async () => {
+    const response: Response = await request
+      .delete(`${usersEndPoint}/${userId}/orders/${order.id}/items/${orderItem.id}`)
+      .set('Authorization', `Bearer ${token}`);
+    const { status, type, body } = response;
+    expect(status).toBe(200);
+    expect(type).toContain('json');
+    expect(body).toEqual({
+      id: orderItem.id,
+      orderId: order.id,
+      productId: product.id,
+      quantity: 1,
+    });
   });
 });

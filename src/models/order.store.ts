@@ -37,11 +37,10 @@ export const validateOrder = (data: Order): ValidationResult => {
   return joiSchema.validate(data);
 };
 
-export const validateOrderItem = (data: {
-  productId: number;
-  quantity: number;
-}): ValidationResult => {
-  const joiSchema: Joi.ObjectSchema<{ productId: number; quantity: number }> = Joi.object({
+export const validateOrderItem = (data: OrderItem): ValidationResult => {
+  const joiSchema: Joi.ObjectSchema<OrderItem> = Joi.object({
+    id: Joi.number(),
+    orderId: Joi.number(),
     productId: Joi.number().required(),
     quantity: Joi.number().required(),
   });
@@ -226,35 +225,25 @@ export class OrderStore {
   static async updateUserOrderItem(
     id: number,
     {
-      userId,
       orderId,
       productId,
       quantity,
     }: {
-      userId: number;
       orderId: number;
       productId: number;
       quantity: number;
     }
   ): Promise<OrderItem | undefined> {
     try {
-      // validate that the product is in the order already!
-      // validate that the order is still active!
       const query = `UPDATE products_in_orders
         SET quantity = ($1)
-        WHERE id = ($1) AND product_id = ($2) AND order_id IN (
-          SELECT id
-          FROM orders
-          WHERE user_id = ($3) AND order_id = ($4) AND status = ($5)
-        )
+        WHERE id = ($2) AND product_id = ($3) AND order_id = ($4)
         RETURNING id, order_id AS "orderId", product_id AS "productId", quantity;`;
       const rows: OrderItem[] = await DatabaseService.runQuery<OrderItem>(query, [
         quantity,
         id,
         productId,
-        userId,
         orderId,
-        'active',
       ]);
 
       return rows[0];
@@ -265,37 +254,16 @@ export class OrderStore {
     }
   }
 
-  static async deleteUserOrderItem(
-    id: number,
-    {
-      userId,
-      orderId,
-    }: {
-      userId: number;
-      orderId: number;
-    }
-  ): Promise<OrderItem | undefined> {
+  static async deleteUserOrderItem(id: number): Promise<OrderItem | undefined> {
     try {
-      // @todo validate that the order is still active!
       const query = `DELETE FROM products_in_orders
-        WHERE id = ($1) AND order_id IN (
-          SELECT id
-          FROM orders
-          WHERE user_id = ($2) AND id = ($3) AND status = ($4)
-        )
+        WHERE id = ($1)
         RETURNING id, order_id AS "orderId", product_id AS "productId", quantity;`;
-      const rows: OrderItem[] = await DatabaseService.runQuery<OrderItem>(query, [
-        id,
-        userId,
-        orderId,
-        'active',
-      ]);
+      const rows: OrderItem[] = await DatabaseService.runQuery<OrderItem>(query, [id]);
 
       return rows[0];
     } catch (error) {
-      throw new Error(
-        `Could not delete the order item id ${id} from the user's order id ${orderId}. ${error}`
-      );
+      throw new Error(`Could not delete the order item id ${id}. ${error}`);
     }
   }
 }

@@ -1,29 +1,12 @@
 import supertest, { Response, SuperTest, Test } from 'supertest';
 import app from '../../app';
-import DatabaseService from '../../services/database.service';
 import { User } from '../../models/user';
 import { getJWTToken } from '../../services/security.service';
 import { Category } from '../../models/category';
+import { deleteAllCategories, insertCategory, maxCategoryId } from '../helpers/db-init';
 
 const request: SuperTest<Test> = supertest(app);
 const categoriesEndPoint = '/api/v1/categories';
-
-const deleteAllCategories = async (): Promise<void> => {
-  const query = 'DELETE FROM categories;';
-  await DatabaseService.runQuery<Category>(query);
-};
-
-const insertCategory = async (name = 'a'): Promise<Category> => {
-  const query = 'INSERT INTO categories (name) VALUES ($1) RETURNING id, name;';
-  const categories: Category[] = await DatabaseService.runQuery<Category>(query, [name]);
-  return categories[0];
-};
-
-const maxCategoryId = async (): Promise<number> => {
-  const query = `SELECT NEXTVAL(pg_get_serial_sequence('categories', 'id')) AS "maxId";`;
-  const ids: { maxId: string }[] = await DatabaseService.runQuery<{ maxId: string }>(query);
-  return parseInt(ids[0]?.maxId, 10);
-};
 
 describe('GET /api/v1/categories', () => {
   beforeEach(async () => {
@@ -52,7 +35,7 @@ describe('GET /api/v1/categories', () => {
     expect(status).toBe(200);
     expect(type).toContain('json');
     expect(body.length > 0).toBeTruthy();
-    expect(body).toContain({ id: jasmine.any(Number), name: 'a' });
+    expect(body).toContain({ id: jasmine.any(Number), name: 'c' });
   });
 });
 
@@ -87,7 +70,7 @@ describe('GET /api/v1/categories/:id', () => {
     const { status, type, body } = response;
     expect(status).toBe(200);
     expect(type).toContain('json');
-    expect(body).toEqual({ id: categoryId, name: 'a' });
+    expect(body).toEqual({ id: categoryId, name: 'c' });
   });
 });
 
@@ -106,7 +89,7 @@ describe('POST /api/v1/categories', () => {
   describe('For non admin users', () => {
     beforeEach(async () => {
       await deleteAllCategories();
-      category = { name: 'a' };
+      category = { name: 'c' };
     });
 
     it('should respond a 412 error for non authenticated requests without token', async () => {
@@ -143,7 +126,7 @@ describe('POST /api/v1/categories', () => {
     describe('Data validation', () => {
       beforeEach(async () => {
         await deleteAllCategories();
-        category = { name: 'a' };
+        category = { name: 'c' };
       });
 
       it('should respond 400 error if the name property is missing', async () => {
@@ -179,7 +162,7 @@ describe('POST /api/v1/categories', () => {
     describe('Happy path for admins', () => {
       beforeEach(async () => {
         await deleteAllCategories();
-        category = { name: 'a' };
+        category = { name: 'c' };
       });
 
       it('should add the category', async () => {
@@ -190,7 +173,7 @@ describe('POST /api/v1/categories', () => {
         const { status, type, body } = response;
         expect(status).toBe(201);
         expect(type).toContain('json');
-        expect(body).toEqual({ id: jasmine.any(Number), name: 'a' });
+        expect(body).toEqual({ id: jasmine.any(Number), name: 'c' });
       });
     });
   });
@@ -211,7 +194,7 @@ describe('PUT /api/v1/categories/:id', () => {
   describe('For non admin users', () => {
     beforeEach(async () => {
       await deleteAllCategories();
-      category = { name: 'a' };
+      category = { name: 'c' };
     });
 
     it('should respond a 412 error for non authenticated requests without token', async () => {
@@ -252,7 +235,7 @@ describe('PUT /api/v1/categories/:id', () => {
     describe('Data validation', () => {
       beforeEach(async () => {
         await deleteAllCategories();
-        category = { name: 'a' };
+        category = { name: 'c' };
         lastCategory = await insertCategory();
         id = lastCategory.id;
       });
@@ -302,7 +285,7 @@ describe('PUT /api/v1/categories/:id', () => {
     describe('Happy path', () => {
       beforeEach(async () => {
         await deleteAllCategories();
-        category = { name: 'a' };
+        category = { name: 'c' };
         lastCategory = await insertCategory();
         id = lastCategory.id;
       });
@@ -338,7 +321,7 @@ describe('DELETE /api/v1/categories/:id', () => {
 
   beforeEach(async () => {
     await deleteAllCategories();
-    category = { name: 'a' };
+    category = { name: 'c' };
     lastCategory = await insertCategory();
     id = lastCategory.id;
   });
@@ -387,7 +370,7 @@ describe('DELETE /api/v1/categories/:id', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(response.status).toBe(200);
     expect(response.type).toContain('json');
-    expect(response.body).toEqual({ id, name: 'a' });
+    expect(response.body).toEqual({ id, name: 'c' });
 
     const responseAfterDelete: Response = await request
       .get(`${categoriesEndPoint}`)

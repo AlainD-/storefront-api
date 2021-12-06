@@ -224,9 +224,6 @@ Admin users have to be set directly in the database by setting the column `is_ad
 * `authed` PUT /users/:userId/orders/:orderId/products/:productId
 * `authed` DELETE /users/:userId/orders/:orderId/products/:productId
 
-## Todos
+## Authors
 
-Self notes for remaining tasks and/or future improvements
-
-* Add UNIQUE in products_in_orders with (order_id, product_id)
-* Add Swagger to document the API
+* **Alain D'EURVEILHER** - *Initial work* - [AlainD.](https://github.com/AlainD-)

@@ -1,0 +1,2 @@
+ALTER TABLE products_in_orders
+DROP CONSTRAINT unique_product_order;

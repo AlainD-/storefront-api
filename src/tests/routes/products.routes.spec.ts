@@ -1,44 +1,19 @@
 import supertest, { Response, SuperTest, Test } from 'supertest';
 import app from '../../app';
-import DatabaseService from '../../services/database.service';
 import { User } from '../../models/user';
 import { getJWTToken } from '../../services/security.service';
 import { Product } from '../../models/product';
 import { Category } from '../../models/category';
+import {
+  deleteAllCategories,
+  deleteAllProducts,
+  insertCategory,
+  insertProduct,
+  maxProductId,
+} from '../helpers/db-init';
 
 const request: SuperTest<Test> = supertest(app);
 const productsEndPoint = '/api/v1/products';
-
-const deleteAllProducts = async (): Promise<void> => {
-  const query = 'DELETE FROM products;';
-  await DatabaseService.runQuery<Product>(query);
-};
-
-const deleteAllCategories = async (): Promise<void> => {
-  const query = 'DELETE FROM categories;';
-  await DatabaseService.runQuery<Category>(query);
-};
-
-const insertCategory = async (name = 'c'): Promise<Category> => {
-  const query = 'INSERT INTO categories (name) VALUES ($1) RETURNING id, name;';
-  const categories: Category[] = await DatabaseService.runQuery<Category>(query, [name]);
-  return categories[0];
-};
-
-const insertProduct = async (categoryId: number): Promise<Product> => {
-  const query = `INSERT INTO products (name, price, category_id, image_url)
-    VALUES ($1, $2, $3, $4)
-    RETURNING id, name, price, category_id AS "categoryId", image_url AS "imageUrl";`;
-  const values: (string | number)[] = ['a', 1, categoryId, 'b'];
-  const products: Product[] = await DatabaseService.runQuery<Product>(query, values);
-  return products[0];
-};
-
-const maxProductId = async (): Promise<number> => {
-  const query = `SELECT NEXTVAL(pg_get_serial_sequence('products', 'id')) AS "maxId";`;
-  const ids: { maxId: string }[] = await DatabaseService.runQuery<{ maxId: string }>(query);
-  return parseInt(ids[0]?.maxId, 10);
-};
 
 describe('GET /api/v1/products', () => {
   let category: Category;

@@ -29,6 +29,7 @@ const USER_NOT_FOUND = 'The user with the given id was not found';
 const ORDER_NOT_FOUND = 'The order with the given id was not found';
 const ORDER_ITEM_NOT_FOUND = 'The order item with the given id was not found';
 const PRODUCT_NOT_FOUND = 'The product with the given id was not found';
+const ORDER_ALREADY_COMPLETED = 'Updating an order that is not active is not allowed';
 
 router.get('/', checkIsAdmin, async (_req: Request, res: Response) => {
   let users: User[];
@@ -255,9 +256,7 @@ router.put('/:userId/orders/:orderId', checkIsCurrentUser, async (req: Request, 
     return res.status(404).send(new NotFound404Error(ORDER_NOT_FOUND));
   }
   if (existingOrder.status !== 'active') {
-    return res
-      .status(403)
-      .send(new NotAuthorized403Error('Updating an order that is not active is not allowed'));
+    return res.status(403).send(new NotAuthorized403Error(ORDER_ALREADY_COMPLETED));
   }
   if (status !== 'complete') {
     return res.status(400).send(new BadRequest400Error('Invalid status for this operation'));
@@ -301,9 +300,7 @@ router.post(
       return res.status(404).send(new NotFound404Error(ORDER_NOT_FOUND));
     }
     if (order.status !== 'active') {
-      return res
-        .status(403)
-        .send(new NotAuthorized403Error('Updating an order that is not active is not allowed'));
+      return res.status(403).send(new NotAuthorized403Error(ORDER_ALREADY_COMPLETED));
     }
 
     const { productId, quantity } = req.body as { productId: number; quantity: number };
@@ -360,6 +357,14 @@ router.put(
     if (!order) {
       return res.status(404).send(new NotFound404Error(ORDER_NOT_FOUND));
     }
+    if (order.status === 'complete') {
+      return res.status(403).send(new NotAuthorized403Error(ORDER_ALREADY_COMPLETED));
+    }
+
+    const orderItem: OrderItem | undefined = await OrderStore.showUserOrderItem(+qId);
+    if (!orderItem) {
+      return res.status(404).send(new NotFound404Error(ORDER_ITEM_NOT_FOUND));
+    }
 
     const { id, productId, quantity } = req.body as {
       id: number;
@@ -370,12 +375,11 @@ router.put(
       return res.status(400).send(new BadRequest400Error('Mismatched order item ids'));
     }
     const product: Product | undefined = await productStore.show(productId);
-    if (!product) {
-      return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
+    if (!product || productId !== orderItem.productId) {
+      return res.status(400).send(new BadRequest400Error('Mismatched product ids'));
     }
 
     const item: OrderItem | undefined = await OrderStore.updateUserOrderItem(id, {
-      userId,
       orderId,
       productId,
       quantity,
@@ -417,16 +421,16 @@ router.delete(
     if (!order) {
       return res.status(404).send(new NotFound404Error(ORDER_NOT_FOUND));
     }
+    if (order.status === 'complete') {
+      return res.status(403).send(new NotAuthorized403Error(ORDER_ALREADY_COMPLETED));
+    }
 
     const item: OrderItem | undefined = await OrderStore.showUserOrderItem(id);
     if (!item) {
       return res.status(404).send(new NotFound404Error(ORDER_ITEM_NOT_FOUND));
     }
 
-    const deletedItem: OrderItem | undefined = await OrderStore.deleteUserOrderItem(id, {
-      userId,
-      orderId,
-    });
+    const deletedItem: OrderItem | undefined = await OrderStore.deleteUserOrderItem(id);
 
     if (!deletedItem) {
       return res
