@@ -1,6 +1,6 @@
 import jwt, { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import { RSA_PUBLIC_KEY } from '../config/environment';
+import { JWT_ALGORITHM, RSA_PUBLIC_KEY } from '../config/environment';
 import Authentication401Error from '../errors/authentication-401.error';
 import Header412Error from '../errors/header-412.error';
 import NotAuthorized403Error from '../errors/not-authorized-403.error';
@@ -33,8 +33,7 @@ export function checkAuthenticated(
     }
     if (token) {
       // verifies both signature and the optional expiration date
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      jwt.verify(token, RSA_PUBLIC_KEY);
+      jwt.verify(token, RSA_PUBLIC_KEY, { algorithms: [JWT_ALGORITHM] });
       return next();
     }
     return res.status(401).send(new Authentication401Error('Not authenticated'));
@@ -63,8 +62,9 @@ export function checkIsAdmin(
     }
     if (token) {
       // verifies both signature and the optional expiration date
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const decodedToken: string | JwtPayload = jwt.verify(token, RSA_PUBLIC_KEY);
+      const decodedToken: string | JwtPayload = jwt.verify(token, RSA_PUBLIC_KEY, {
+        algorithms: [JWT_ALGORITHM],
+      });
       if (typeof decodedToken === 'string') {
         return res.status(403).send(new NotAuthorized403Error('Not authorized'));
       }
@@ -103,8 +103,9 @@ export function checkIsCurrentUser(
     }
     if (token) {
       // verifies both signature and the optional expiration date
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const decodedToken: string | JwtPayload = jwt.verify(token, RSA_PUBLIC_KEY);
+      const decodedToken: string | JwtPayload = jwt.verify(token, RSA_PUBLIC_KEY, {
+        algorithms: [JWT_ALGORITHM],
+      });
       if (typeof decodedToken === 'string') {
         return res.status(403).send(new NotAuthorized403Error('Not authorized'));
       }

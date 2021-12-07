@@ -1,3 +1,4 @@
+import { Algorithm as JWTAlgorithm } from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import path from 'path';
@@ -61,6 +62,8 @@ const RSA_PRIVATE_KEY: Buffer = rsaPrivateKey;
 const RSA_PUBLIC_KEY: Buffer = rsaPublicKey;
 const ENV: string | undefined = NODE_ENV?.trim();
 
+const JWT_ALGORITHM: JWTAlgorithm = 'RS256';
+
 export {
   PRIVATE_KEY_PATH,
   PUBLIC_KEY_PATH,
@@ -77,4 +80,5 @@ export {
   ENV,
   RSA_PRIVATE_KEY,
   RSA_PUBLIC_KEY,
+  JWT_ALGORITHM,
 };

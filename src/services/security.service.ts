@@ -1,6 +1,11 @@
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
-import { BCRYPT_PASSWORD, SALT_ROUNDS, RSA_PRIVATE_KEY } from '../config/environment';
+import {
+  BCRYPT_PASSWORD,
+  SALT_ROUNDS,
+  RSA_PRIVATE_KEY,
+  JWT_ALGORITHM,
+} from '../config/environment';
 import { User } from '../models/user';
 
 export const hash$ = (password: string): Promise<string> =>
@@ -24,7 +29,7 @@ export const getJWTToken = (user: User): string => {
     },
     RSA_PRIVATE_KEY,
     {
-      algorithm: 'RS256',
+      algorithm: JWT_ALGORITHM,
       expiresIn,
       subject: user.email,
     }
