@@ -94,14 +94,25 @@ router.put('/:id', checkIsAdmin, async (req: Request, res: Response) => {
     return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
   }
 
-  const updatedProduct: Product | undefined = await productStore.update(id, {
-    name,
-    price,
-    categoryId,
-    imageUrl,
-  });
+  try {
+    const updatedProduct: Product | undefined = await productStore.update(id, {
+      name,
+      price,
+      categoryId,
+      imageUrl,
+    });
 
-  return res.send(updatedProduct);
+    return res.send(updatedProduct);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    return res
+      .status(500)
+      .send(
+        new Internal500Error(
+          `An unexpected error occurred during the update of the product. ${err?.message ?? ''}`
+        )
+      );
+  }
 });
 
 router.delete('/:id', checkIsAdmin, async (req: Request, res: Response) => {
@@ -117,9 +128,20 @@ router.delete('/:id', checkIsAdmin, async (req: Request, res: Response) => {
     return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
   }
 
-  const deletedProduct: Product | undefined = await productStore.delete(id);
+  try {
+    const deletedProduct: Product | undefined = await productStore.delete(id);
 
-  return res.send(deletedProduct);
+    return res.send(deletedProduct);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    return res
+      .status(500)
+      .send(
+        new Internal500Error(
+          `An unexpected error occurred during the deletion of the product. ${err?.message ?? ''}`
+        )
+      );
+  }
 });
 
 export default router;

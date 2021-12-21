@@ -113,20 +113,30 @@ router.put('/:userId', checkIsCurrentUser, async (req: Request, res: Response) =
   if (!user) {
     return res.status(404).send(new NotFound404Error(USER_NOT_FOUND));
   }
+  try {
+    const updatedUser: User | undefined = await UserStore.update(userId, {
+      firstName,
+      lastName,
+      email,
+    });
 
-  const updatedUser: User | undefined = await UserStore.update(userId, {
-    firstName,
-    lastName,
-    email,
-  });
+    if (!updatedUser) {
+      return res
+        .status(500)
+        .send(new Internal500Error('An unexpected error occurred when trying to update the user'));
+    }
 
-  if (!updatedUser) {
+    return res.send(updatedUser);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
     return res
       .status(500)
-      .send(new Internal500Error('An unexpected error occurred when trying to update the user'));
+      .send(
+        new Internal500Error(
+          `An unexpected error occurred when trying to update the user. ${err?.message ?? ''}`
+        )
+      );
   }
-
-  return res.send(updatedUser);
 });
 
 router.delete('/:userId', checkIsAdmin, async (req: Request, res: Response) => {
@@ -142,15 +152,26 @@ router.delete('/:userId', checkIsAdmin, async (req: Request, res: Response) => {
     return res.status(404).send(new NotFound404Error(USER_NOT_FOUND));
   }
 
-  const deletedUser: User | undefined = await UserStore.delete(userId);
+  try {
+    const deletedUser: User | undefined = await UserStore.delete(userId);
 
-  if (!deletedUser) {
+    if (!deletedUser) {
+      return res
+        .status(500)
+        .send(new Internal500Error('An unexpected error occurred when trying to delete the user'));
+    }
+
+    return res.send(deletedUser);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
     return res
       .status(500)
-      .send(new Internal500Error('An unexpected error occurred when trying to delete the user'));
+      .send(
+        new Internal500Error(
+          `An unexpected error occurred when trying to delete the user. ${err?.message ?? ''}`
+        )
+      );
   }
-
-  return res.send(deletedUser);
 });
 
 router.get('/:userId/orders/', checkIsCurrentUser, async (req: Request, res: Response) => {
@@ -262,18 +283,29 @@ router.put('/:userId/orders/:orderId', checkIsCurrentUser, async (req: Request, 
     return res.status(400).send(new BadRequest400Error('Invalid status for this operation'));
   }
 
-  const updatedOrder: Order | undefined = await OrderStore.updateUserOrder(orderId, {
-    userId,
-    status,
-  });
+  try {
+    const updatedOrder: Order | undefined = await OrderStore.updateUserOrder(orderId, {
+      userId,
+      status,
+    });
 
-  if (!updatedOrder) {
+    if (!updatedOrder) {
+      return res
+        .status(500)
+        .send(new Internal500Error('An unexpected error occurred when trying to update the order'));
+    }
+
+    return res.send(updatedOrder);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
     return res
       .status(500)
-      .send(new Internal500Error('An unexpected error occurred when trying to update the order'));
+      .send(
+        new Internal500Error(
+          `An unexpected error occurred when trying to update the order. ${err?.message ?? ''}`
+        )
+      );
   }
-
-  return res.send(updatedOrder);
 });
 
 router.post(
@@ -309,24 +341,37 @@ router.post(
       return res.status(404).send(new NotFound404Error(PRODUCT_NOT_FOUND));
     }
 
-    const item: OrderItem | undefined = await OrderStore.addUserOrderItem({
-      userId,
-      orderId,
-      productId,
-      quantity,
-    });
+    try {
+      const item: OrderItem | undefined = await OrderStore.addUserOrderItem({
+        userId,
+        orderId,
+        productId,
+        quantity,
+      });
 
-    if (!item) {
+      if (!item) {
+        return res
+          .status(500)
+          .send(
+            new Internal500Error(
+              'An unexpected error occurred when trying to add the product to the order'
+            )
+          );
+      }
+
+      return res.status(201).send(item);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
       return res
         .status(500)
         .send(
           new Internal500Error(
-            'An unexpected error occurred when trying to add the product to the order'
+            `An unexpected error occurred when trying to add the product to the order. ${
+              err?.message ?? ''
+            }`
           )
         );
     }
-
-    return res.status(201).send(item);
   }
 );
 
@@ -379,23 +424,36 @@ router.put(
       return res.status(400).send(new BadRequest400Error('Mismatched product ids'));
     }
 
-    const item: OrderItem | undefined = await OrderStore.updateUserOrderItem(id, {
-      orderId,
-      productId,
-      quantity,
-    });
+    try {
+      const item: OrderItem | undefined = await OrderStore.updateUserOrderItem(id, {
+        orderId,
+        productId,
+        quantity,
+      });
 
-    if (!item) {
+      if (!item) {
+        return res
+          .status(500)
+          .send(
+            new Internal500Error(
+              'An unexpected error occurred when trying to update the product in the order'
+            )
+          );
+      }
+
+      return res.send(item);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
       return res
         .status(500)
         .send(
           new Internal500Error(
-            'An unexpected error occurred when trying to update the product to the order'
+            `An unexpected error occurred when trying to update the product in the order. ${
+              err?.message ?? ''
+            }`
           )
         );
     }
-
-    return res.send(item);
   }
 );
 
@@ -430,19 +488,32 @@ router.delete(
       return res.status(404).send(new NotFound404Error(ORDER_ITEM_NOT_FOUND));
     }
 
-    const deletedItem: OrderItem | undefined = await OrderStore.deleteUserOrderItem(id);
+    try {
+      const deletedItem: OrderItem | undefined = await OrderStore.deleteUserOrderItem(id);
 
-    if (!deletedItem) {
+      if (!deletedItem) {
+        return res
+          .status(500)
+          .send(
+            new Internal500Error(
+              'An unexpected error occurred when trying to remove the product from the order'
+            )
+          );
+      }
+
+      return res.send(deletedItem);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (err: any) {
       return res
         .status(500)
         .send(
           new Internal500Error(
-            'An unexpected error occurred when trying to remove the product from the order'
+            `An unexpected error occurred when trying to remove the product from the order. ${
+              err?.message ?? ''
+            }`
           )
         );
     }
-
-    return res.send(deletedItem);
   }
 );
 

@@ -89,9 +89,20 @@ router.put('/:id', checkIsAdmin, async (req: Request, res: Response) => {
     return res.status(404).send(new NotFound404Error(CATEGORY_NOT_FOUND));
   }
 
-  const updatedCategory: Category | undefined = await categoryStore.update(id, { name });
+  try {
+    const updatedCategory: Category | undefined = await categoryStore.update(id, { name });
 
-  return res.send(updatedCategory);
+    return res.send(updatedCategory);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    return res
+      .status(500)
+      .send(
+        new Internal500Error(
+          `An unexpected error occurred during the update of the category. ${err?.message ?? ''}`
+        )
+      );
+  }
 });
 
 router.delete('/:id', checkIsAdmin, async (req: Request, res: Response) => {
@@ -107,9 +118,20 @@ router.delete('/:id', checkIsAdmin, async (req: Request, res: Response) => {
     return res.status(404).send(new NotFound404Error(CATEGORY_NOT_FOUND));
   }
 
-  const deletedCategory: Category | undefined = await categoryStore.delete(id);
+  try {
+    const deletedCategory: Category | undefined = await categoryStore.delete(id);
 
-  return res.send(deletedCategory);
+    return res.send(deletedCategory);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  } catch (err: any) {
+    return res
+      .status(500)
+      .send(
+        new Internal500Error(
+          `An unexpected error occurred during the deletion of the category. ${err?.message ?? ''}`
+        )
+      );
+  }
 });
 
 export default router;
