@@ -5,7 +5,7 @@ import { Category } from './category';
 export const validate = (data: Category): ValidationResult => {
   const joiSchema: Joi.ObjectSchema<Category> = Joi.object({
     id: Joi.number(),
-    name: Joi.string().required(),
+    name: Joi.string().max(100).required(),
   });
   return joiSchema.validate(data);
 };
