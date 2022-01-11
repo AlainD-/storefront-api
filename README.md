@@ -18,7 +18,15 @@ ssh-keygen -t rsa -P "" -b 4096 -m PEM -f /your/ssh/path/private.key
 ssh-keygen -e -m PEM -f /your/ssh/path/private.key > /your/ssh/path/public.key.pub
 ```
 
-Note: the local folder '.ssh' is ignored by git in the current configuration of the project. If you decide to put your key pair in the local .ssh folder, make sure that '.ssh' remains ignored and is not removed from the .gitignore file.
+If you are working on Windows you can instead execute the following commands in a DOS CMD command:
+
+```dos
+mkdir .ssh
+ssh-keygen -t rsa -P "" -b 4096 -m PEM -f .\.ssh\private.key
+ssh-keygen -e -m PEM -f .\.ssh\private.key > .\.ssh\public.key.pub
+```
+
+**Note:** The local folder '.ssh' is ignored by git in the current configuration of the project. If you decide to put your key pair in the local .ssh folder, make sure that '.ssh' remains ignored and is not removed from the .gitignore file.
 
 #### .env file
 
@@ -40,6 +48,13 @@ POSTGRES_DB_TEST=shopping_test
 POSTGRES_USER=shopping_user
 POSTGRES_PASSWORD=password123
 POSTGRES_PASSWORD_TEST=password123
+```
+
+**Note:** If you are on a Windows system, you can use the Windows anti-slash caracters in the path. Relative paths are also accepted. For example, for a pair of SSH key saved in the local .ssh folder, you can set for instance in the `.env` file:
+
+```bash
+PRIVATE_KEY_PATH=.\.ssh\private.key
+PUBLIC_KEY_PATH=.\.ssh\public.key.pub
 ```
 
 ### Installing packages
