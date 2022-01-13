@@ -3,13 +3,19 @@ import app from '../../app';
 import { User } from '../../models/user';
 import { getJWTToken } from '../../services/security.service';
 import { Category } from '../../models/category';
-import { deleteAllCategories, insertCategory, maxCategoryId } from '../helpers/db-init';
+import {
+  deleteAllProducts,
+  deleteAllCategories,
+  insertCategory,
+  maxCategoryId,
+} from '../helpers/db-init';
 
 const request: SuperTest<Test> = supertest(app);
 const categoriesEndPoint = '/api/v1/categories';
 
 describe('GET /api/v1/categories', () => {
   beforeEach(async () => {
+    await deleteAllProducts();
     await deleteAllCategories();
   });
 
@@ -43,6 +49,7 @@ describe('GET /api/v1/categories/:id', () => {
   let maxId: number;
 
   beforeEach(async () => {
+    await deleteAllProducts();
     await deleteAllCategories();
     maxId = await maxCategoryId();
   });
@@ -88,6 +95,7 @@ describe('POST /api/v1/categories', () => {
 
   describe('For non admin users', () => {
     beforeEach(async () => {
+      await deleteAllProducts();
       await deleteAllCategories();
       category = { name: 'c' };
     });
@@ -125,6 +133,7 @@ describe('POST /api/v1/categories', () => {
   describe('For admin users', () => {
     describe('Data validation', () => {
       beforeEach(async () => {
+        await deleteAllProducts();
         await deleteAllCategories();
         category = { name: 'c' };
       });
@@ -161,6 +170,7 @@ describe('POST /api/v1/categories', () => {
 
     describe('Happy path for admins', () => {
       beforeEach(async () => {
+        await deleteAllProducts();
         await deleteAllCategories();
         category = { name: 'c' };
       });
@@ -193,6 +203,7 @@ describe('PUT /api/v1/categories/:id', () => {
 
   describe('For non admin users', () => {
     beforeEach(async () => {
+      await deleteAllProducts();
       await deleteAllCategories();
       category = { name: 'c' };
     });
@@ -234,6 +245,7 @@ describe('PUT /api/v1/categories/:id', () => {
 
     describe('Data validation', () => {
       beforeEach(async () => {
+        await deleteAllProducts();
         await deleteAllCategories();
         category = { name: 'c' };
         lastCategory = await insertCategory();
@@ -284,6 +296,7 @@ describe('PUT /api/v1/categories/:id', () => {
 
     describe('Happy path', () => {
       beforeEach(async () => {
+        await deleteAllProducts();
         await deleteAllCategories();
         category = { name: 'c' };
         lastCategory = await insertCategory();
@@ -320,6 +333,7 @@ describe('DELETE /api/v1/categories/:id', () => {
   });
 
   beforeEach(async () => {
+    await deleteAllProducts();
     await deleteAllCategories();
     category = { name: 'c' };
     lastCategory = await insertCategory();
