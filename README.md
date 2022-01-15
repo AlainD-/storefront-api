@@ -50,6 +50,8 @@ POSTGRES_PASSWORD=password123
 POSTGRES_PASSWORD_TEST=password123
 ```
 
+**IMPORTANT:** Make sure to point `PUBLIC_KEY_PATH` to the file generated with the second command ssh-keygen to generate the PEM file. In some operating systems the first command to generate the private key, generates also a privata.pub file. This is NOT the one to use. Make sure that you are using the public key generated with the second command, starting with "public" as mentionned in the instructions above.
+
 **Note:** If you are on a Windows system, you can use the Windows anti-slash caracters in the path. Relative paths are also accepted. For example, for a pair of SSH key saved in the local .ssh folder, you can set for instance in the `.env` file:
 
 ```bash
