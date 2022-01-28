@@ -16,6 +16,14 @@
     "sourceType": "module"
   },
   "plugins": ["@typescript-eslint"],
+  "rules": {
+    "prettier/prettier": [
+      "error",
+      {
+        "endOfLine": "auto"
+      }
+    ]
+  },
   "settings": {
     "import/extensions": [".js",".jsx",".ts",".tsx"],
     "import/parsers": {

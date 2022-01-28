@@ -12,7 +12,7 @@ export default function logging(): void {
     new winston.transports.File({ filename: 'exceptions.log' })
   );
 
-  process.on('unhandledRejection', (ex: any): void => {
+  process.on('unhandledRejection', (ex: unknown): void => {
     if (ex instanceof Error) {
       throw ex;
     } else {
