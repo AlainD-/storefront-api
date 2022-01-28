@@ -11,9 +11,11 @@ jobs:
     steps:
       - node/install
       - checkout
-      # install dependencies in both apps
       - run:
-          name: build
+          name: Install Dependencies
+          command: npm i
+      - run:
+          name: Build
           command: npm run build
   test:
     docker:
@@ -22,7 +24,10 @@ jobs:
       - node/install
       - checkout
       - run:
-          name: unit test
+          name: Install Dependencies
+          command: npm i
+      - run:
+          name: Unit Tests
           command: npm run test
   lint:
     docker:
@@ -31,7 +36,10 @@ jobs:
       - node/install
       - checkout
       - run:
-          name: linting
+          name: Install Dependencies
+          command: npm i
+      - run:
+          name: Linting
           command: npm run lint
 # Orchestrate our job run sequence
 workflows:
