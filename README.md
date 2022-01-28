@@ -1,5 +1,7 @@
 # StoreFront API
 
+[![CircleCI](https://circleci.com/gh/AlainD-/storefront-api/tree/master.svg?style=svg)](https://circleci.com/gh/AlainD-/storefront-api/tree/master)
+
 RESTful API for the StoreFront application. The API contains endpoints to serve a shopping-like/ecommerce-like application.
 
 It powers RESTfull API endpoints through Express, JW capabilities for authentication and authorization, PostgreSQL database communication.
