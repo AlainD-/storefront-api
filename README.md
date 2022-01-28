@@ -8,25 +8,9 @@ It powers RESTfull API endpoints through Express, JW capabilities for authentica
 
 ### Environment Setup
 
-#### SSH key pair
+#### JWT Token
 
-In order to use the JWT capability a mandatory SSH key pair is required.
-To generate a new key pair, you can use for instance:
-
-```bash
-ssh-keygen -t rsa -P "" -b 4096 -m PEM -f /your/ssh/path/private.key
-ssh-keygen -e -m PEM -f /your/ssh/path/private.key > /your/ssh/path/public.key.pub
-```
-
-If you are working on Windows you can instead execute the following commands in a DOS CMD command:
-
-```dos
-mkdir .ssh
-ssh-keygen -t rsa -P "" -b 4096 -m PEM -f .\.ssh\private.key
-ssh-keygen -e -m PEM -f .\.ssh\private.key > .\.ssh\public.key.pub
-```
-
-**Note:** The local folder '.ssh' is ignored by git in the current configuration of the project. If you decide to put your key pair in the local .ssh folder, make sure that '.ssh' remains ignored and is not removed from the .gitignore file.
+In order to use the JWT capability a mandatory secret token is required `JWT_TOKEN_SECRET`. This token consists of a series of alphanumeric characters.
 
 #### .env file
 
@@ -36,8 +20,7 @@ Modify the values of the different configuration fields according to your instal
 Example:
 
 ```bash
-PRIVATE_KEY_PATH=/path/to/ssh/private.key
-PUBLIC_KEY_PATH=/path/to/ssh/public.key
+JWT_TOKEN_SECRET=a1B2c3D4ef56gH78i9
 BCRYPT_PASSWORD=some-secret-password
 SALT_ROUNDS=10
 PORT=3000
@@ -48,15 +31,6 @@ POSTGRES_DB_TEST=shopping_test
 POSTGRES_USER=shopping_user
 POSTGRES_PASSWORD=password123
 POSTGRES_PASSWORD_TEST=password123
-```
-
-**IMPORTANT:** Make sure to point `PUBLIC_KEY_PATH` to the file generated with the second command ssh-keygen to generate the PEM file. In some operating systems the first command to generate the private key, generates also a privata.pub file. This is NOT the one to use. Make sure that you are using the public key generated with the second command, starting with "public" as mentionned in the instructions above.
-
-**Note:** If you are on a Windows system, you can use the Windows anti-slash caracters in the path. Relative paths are also accepted. For example, for a pair of SSH key saved in the local .ssh folder, you can set for instance in the `.env` file:
-
-```bash
-PRIVATE_KEY_PATH=.\.ssh\private.key
-PUBLIC_KEY_PATH=.\.ssh\public.key.pub
 ```
 
 ### Installing packages

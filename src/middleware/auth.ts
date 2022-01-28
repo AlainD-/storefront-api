@@ -1,6 +1,6 @@
 import jwt, { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import { Request, Response, NextFunction } from 'express';
-import { JWT_ALGORITHM, RSA_PUBLIC_KEY } from '../config/environment';
+import { JWT_ALGORITHM, JWT_TOKEN_SECRET } from '../config/environment';
 import Authentication401Error from '../errors/authentication-401.error';
 import Header412Error from '../errors/header-412.error';
 import NotAuthorized403Error from '../errors/not-authorized-403.error';
@@ -33,7 +33,7 @@ export function checkAuthenticated(
     }
     if (token) {
       // verifies both signature and the optional expiration date
-      jwt.verify(token, RSA_PUBLIC_KEY, { algorithms: [JWT_ALGORITHM] });
+      jwt.verify(token, JWT_TOKEN_SECRET, { algorithms: [JWT_ALGORITHM] });
       return next();
     }
     return res.status(401).send(new Authentication401Error('Not authenticated'));
@@ -62,7 +62,7 @@ export function checkIsAdmin(
     }
     if (token) {
       // verifies both signature and the optional expiration date
-      const decodedToken: string | JwtPayload = jwt.verify(token, RSA_PUBLIC_KEY, {
+      const decodedToken: string | JwtPayload = jwt.verify(token, JWT_TOKEN_SECRET, {
         algorithms: [JWT_ALGORITHM],
       });
       if (typeof decodedToken === 'string') {
@@ -103,7 +103,7 @@ export function checkIsCurrentUser(
     }
     if (token) {
       // verifies both signature and the optional expiration date
-      const decodedToken: string | JwtPayload = jwt.verify(token, RSA_PUBLIC_KEY, {
+      const decodedToken: string | JwtPayload = jwt.verify(token, JWT_TOKEN_SECRET, {
         algorithms: [JWT_ALGORITHM],
       });
       if (typeof decodedToken === 'string') {

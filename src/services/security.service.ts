@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import {
   BCRYPT_PASSWORD,
   SALT_ROUNDS,
-  RSA_PRIVATE_KEY,
+  JWT_TOKEN_SECRET,
   JWT_ALGORITHM,
 } from '../config/environment';
 import { User } from '../models/user';
@@ -27,7 +27,7 @@ export const getJWTToken = (user: User): string => {
       permissions,
       userId: user.id,
     },
-    RSA_PRIVATE_KEY,
+    JWT_TOKEN_SECRET,
     {
       algorithm: JWT_ALGORITHM,
       expiresIn,

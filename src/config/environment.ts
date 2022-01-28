@@ -1,13 +1,10 @@
 import { Algorithm as JWTAlgorithm } from 'jsonwebtoken';
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
 
 dotenv.config();
 
 const {
-  PRIVATE_KEY_PATH,
-  PUBLIC_KEY_PATH,
+  JWT_TOKEN_SECRET = '',
   BCRYPT_PASSWORD,
   SALT_ROUNDS,
   PORT,
@@ -22,8 +19,7 @@ const {
 } = process.env;
 
 if (
-  !PRIVATE_KEY_PATH ||
-  !PUBLIC_KEY_PATH ||
+  !JWT_TOKEN_SECRET ||
   !BCRYPT_PASSWORD ||
   !SALT_ROUNDS ||
   !POSTGRES_HOST ||
@@ -39,34 +35,13 @@ if (
   );
 }
 
-let rsaPrivateKey: Buffer | null = null;
-let rsaPublicKey: Buffer | null = null;
-try {
-  if (!PRIVATE_KEY_PATH) {
-    throw new Error('Could not find the private key configuartion');
-  }
-  rsaPrivateKey = fs.readFileSync(path.resolve(PRIVATE_KEY_PATH));
-} catch (_ex) {
-  throw new Error('Could not find the private key configuartion');
-}
-try {
-  if (!PUBLIC_KEY_PATH) {
-    throw new Error('Could not find the public key configuartion');
-  }
-  rsaPublicKey = fs.readFileSync(path.resolve(PUBLIC_KEY_PATH));
-} catch (_ex) {
-  throw new Error('Could not find the public key configuartion');
-}
-
-const RSA_PRIVATE_KEY: Buffer = rsaPrivateKey;
-const RSA_PUBLIC_KEY: Buffer = rsaPublicKey;
 const ENV: string | undefined = NODE_ENV?.trim();
 
 const JWT_ALGORITHM: JWTAlgorithm = 'RS256';
 
 export {
-  PRIVATE_KEY_PATH,
-  PUBLIC_KEY_PATH,
+  JWT_ALGORITHM,
+  JWT_TOKEN_SECRET,
   BCRYPT_PASSWORD,
   SALT_ROUNDS,
   PORT,
@@ -78,7 +53,4 @@ export {
   POSTGRES_PASSWORD,
   POSTGRES_PASSWORD_TEST,
   ENV,
-  RSA_PRIVATE_KEY,
-  RSA_PUBLIC_KEY,
-  JWT_ALGORITHM,
 };
