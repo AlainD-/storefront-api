@@ -11,7 +11,7 @@
     "jasmine": "jasmine",
     "prettier": "prettier --config .prettierrc \"src/**/*.ts\" --write",
     "pretest": "npm run migrate:test:up",
-    "test": "SET NODE_ENV=test && npm run build && npm run jasmine",
+    "test": "set NODE_ENV=test && npm run build && npm run jasmine",
     "posttest": "npm run migrate:test:reset",
     "migrate:dev:up": "db-migrate up -e dev",
     "migrate:dev:down": "db-migrate down -e dev",
