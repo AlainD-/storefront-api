@@ -37,7 +37,7 @@ if (
 
 const ENV: string | undefined = NODE_ENV?.trim();
 
-const JWT_ALGORITHM: JWTAlgorithm = 'RS256';
+const JWT_ALGORITHM: JWTAlgorithm = 'HS256';
 
 export {
   JWT_ALGORITHM,
