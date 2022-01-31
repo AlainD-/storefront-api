@@ -6,11 +6,6 @@ import { OrderStatus } from '../../models/order-status.type';
 import { Product } from '../../models/product';
 import { User } from '../../models/user';
 
-export const deleteAllUsers = async (): Promise<void> => {
-  const query = 'DELETE FROM users;';
-  await DatabaseService.runQuery<User>(query);
-};
-
 export const insertUser = async (email = 'd@d.d'): Promise<User> => {
   const query =
     'INSERT INTO users (first_name, last_name, password, email) VALUES ($1, $2, $3, $4) RETURNING id, email, first_name AS "firstName", last_name AS "lastName", is_admin AS "isAdmin";';
@@ -64,6 +59,12 @@ export const maxProductId = async (): Promise<number> => {
 export const deleteAllOrders = async (): Promise<void> => {
   const query = 'DELETE FROM orders;';
   await DatabaseService.runQuery<Order>(query);
+};
+
+export const deleteAllUsers = async (): Promise<void> => {
+  await deleteAllOrders();
+  const query = 'DELETE FROM users;';
+  await DatabaseService.runQuery<User>(query);
 };
 
 export const insertOrder = async (
