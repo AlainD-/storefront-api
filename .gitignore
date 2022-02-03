@@ -107,3 +107,12 @@ dist
 
 # Other
 .ssh
+.elasticbeanstalk/
+
+# Elastic Beanstalk Files
+.elasticbeanstalk/*
+!.elasticbeanstalk/*.cfg.yml
+!.elasticbeanstalk/*.global.yml
+
+deploy/
+storefront-api.zip

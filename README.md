@@ -79,7 +79,7 @@ The `package.json` files contains a series of usefull scripts to easily migrate 
 
 ### Local server
 
-To start the application locally on your machine execute in a terminal `npm start`.
+To start the application locally on your machine execute in a terminal `npm run start:dev`.
 
 Note that the database will be migrated up with the missing migration scripts before starting the local server via the automatic script hook `prestart`.
 
