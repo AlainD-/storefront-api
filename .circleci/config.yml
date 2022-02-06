@@ -69,7 +69,7 @@ jobs:
       - run:
           name: Deploying
           command: |
-            eb init
+            eb init --platform 'Node.js 14 running on 64bit Amazon Linux 2' --region 'us-east-1' 'storefront-api'
             eb deploy
 # Orchestrate our job run sequence
 workflows:
