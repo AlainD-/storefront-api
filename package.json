@@ -22,11 +22,11 @@
     "migrate:test:reset": "db-migrate reset -e test",
     "deploy:clean": "rm -f storefront-api.zip && rm -rf deploy && mkdir deploy",
     "deploy:build": "npm run deploy:clean && rm -rf node_modules && npm ci && npm run build && cp -rf dist/* deploy",
-    "deploy:rest": "npm run deploy:build && cp -rf migrations/ deploy/migrations && cp .npmrc database.json package.json deploy",
-    "not:deploy:dependencies": "npm run deploy:rest && rm -rf node_modules && npm ci --only=production && npm cache clean --force && cp -rf node_modules/ deploy/node_modules",
-    "deploy:zip": "npm run deploy:rest && cd deploy && zip -r -D ../storefront-api.zip *",
-    "predeploy": "npm run deploy:zip",
-    "deploy": "chmod +x ./bin/deploy.sh"
+    "deploy:all": "npm run deploy:build && cp -rf migrations/ deploy/migrations && cp .npmrc database.json package.json deploy",
+    "not:deploy:dependencies": "npm run deploy:all && rm -rf node_modules && npm ci --only=production && npm cache clean --force && cp -rf node_modules/ deploy/node_modules",
+    "deploy:zip": "npm run deploy:all && cd deploy && zip -r -D ../storefront-api.zip *",
+    "build:artifact": "npm run deploy:zip",
+    "deploy": "chmod +x ./bin/deploy.sh && ./bin.deploy.sh"
   },
   "repository": {
     "type": "git",

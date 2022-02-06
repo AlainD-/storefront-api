@@ -2,7 +2,7 @@ version: 2.1
 orbs:
   # orgs contain basc recipes and reproducible actions (install node, aws, etc.)
   node: circleci/node@4.1.0
-  # different jobs are called later in the workflows sections
+  aws-cli: circleci/aws-cli@2.0.6
 jobs:
   build:
     docker:
@@ -41,6 +41,32 @@ jobs:
       - run:
           name: Linting
           command: npm run lint
+  prepare_deploy:
+    docker:
+      - image: "cimg/base:stable"
+    steps:
+      - node/install
+      - checkout
+      - run:
+          name: Creating artifact
+          command: npm run build:all
+      - persist_to_workspace:
+          root: ./deploy
+          paths:
+            - ./*
+  deploy:
+    docker:
+      - image: "cimg/base:stable"
+    steps:
+      - attach_workspace:
+          at: ./
+      - aws-cli/setup
+      - run:
+          name: Debugging
+          command: ls -l
+      - run:
+          name: Deploying
+          command: eb deploy
 # Orchestrate our job run sequence
 workflows:
   build_and_test:
@@ -48,3 +74,9 @@ workflows:
       - build
       - test
       - lint
+      - prepare_deploy:
+          requires:
+            - build
+      - deploy:
+          requires:
+            - prepare_deploy
