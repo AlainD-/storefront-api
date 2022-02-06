@@ -64,9 +64,6 @@ jobs:
       - aws-cli/setup
       - eb-cli/setup
       - run:
-          name: Debugging
-          command: ls -la
-      - run:
           name: Deploying
           command: |
             eb init --platform 'Node.js 14 running on 64bit Amazon Linux 2' --region 'us-east-1' 'storefront-api'
