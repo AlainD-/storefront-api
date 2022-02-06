@@ -68,7 +68,9 @@ jobs:
           command: ls -la
       - run:
           name: Deploying
-          command: eb deploy
+          command: |
+            eb init
+            eb deploy
 # Orchestrate our job run sequence
 workflows:
   build_and_test:
@@ -79,6 +81,7 @@ workflows:
       - prepare_deploy:
           requires:
             - build
+            - test
       - deploy:
           requires:
             - prepare_deploy
