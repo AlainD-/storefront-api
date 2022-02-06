@@ -48,8 +48,8 @@ jobs:
       - node/install
       - checkout
       - run:
-          name: Creating artifact
-          command: npm run build:all
+          name: Preparing artifacts
+          command: npm run deploy:all
       - persist_to_workspace:
           root: ./deploy
           paths:
