@@ -67,18 +67,28 @@ jobs:
           name: Deploying
           command: |
             eb init --platform 'Node.js 14 running on 64bit Amazon Linux 2' --region 'us-east-1' 'storefront-api'
+            eb setenv BCRYPT_PASSWORD=$BCRYPT_PASSWORD JWT_TOKEN_SECRET=$JWT_TOKEN_SECRET PORT=$PORT POSTGRES_DB=$POSTGRES_DB POSTGRES_DB_TEST=$POSTGRES_DB_TEST POSTGRES_HOST=$POSTGRES_HOST POSTGRES_PASSWORD=$POSTGRES_PASSWORD POSTGRES_PASSWORD_TEST=$POSTGRES_PASSWORD_TEST POSTGRES_PORT=$POSTGRES_PORT POSTGRES_USER=$POSTGRES_USER SALT_ROUNDS=$SALT_ROUNDS
             eb deploy
 # Orchestrate our job run sequence
 workflows:
   build_test_deploy:
     jobs:
-      - build
+      - build:
+          filters:
+            branches:
+              only: master
       - test
       - lint
       - prepare_deploy:
+          filters:
+            branches:
+              only: master
           requires:
             - build
             - test
       - deploy:
+          filters:
+            branches:
+              only: master
           requires:
             - prepare_deploy
